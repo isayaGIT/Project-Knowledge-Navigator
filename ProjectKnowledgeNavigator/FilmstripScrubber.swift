@@ -18,7 +18,6 @@ struct FilmstripScrubber: View {
             let startIndex = max(0, min(max(0, count - visibleCount), current - visibleCount / 2))
             let endIndex = min(count, startIndex + visibleCount)
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 6).fill(.quaternary.opacity(0.6))
                 if count > 0 {
                     HStack(spacing: frameGap) {
                         ForEach(startIndex..<endIndex, id: \.self) { index in
@@ -57,7 +56,6 @@ struct FilmstripScrubber: View {
             if selected { RoundedRectangle(cornerRadius: 4).stroke(Color.accentColor, lineWidth: 2.5) }
         }
         .clipShape(RoundedRectangle(cornerRadius: 4))
-        .clipShape(RoundedRectangle(cornerRadius: 4))
         .overlay(alignment: .bottomLeading) {
             Text("\(index + 1)").font(.system(size: 8, weight: .semibold, design: .rounded)).foregroundStyle(.black.opacity(0.65)).padding(3)
         }
@@ -66,8 +64,7 @@ struct FilmstripScrubber: View {
 
     private func stripOffset(width: CGFloat, count: Int, selected: Int, startIndex: Int) -> CGFloat {
         let totalWidth = CGFloat(count) * frameWidth + CGFloat(max(0, count - 1)) * frameGap
-        if totalWidth <= width { return (width - totalWidth) / 2 }
-        let localIndex = selected - startIndex
-        return width / 2 - CGFloat(localIndex) * (frameWidth + frameGap) - frameWidth / 2
+        if totalWidth <= width { return 0 }
+        return -CGFloat(startIndex) * (frameWidth + frameGap)
     }
 }

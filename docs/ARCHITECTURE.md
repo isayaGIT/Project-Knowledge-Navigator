@@ -2,10 +2,11 @@
 
 ## Minimal shape
 - `ProjectNode`: stable identity, title, children, and content items; recursive nesting is not represented by fixed-depth fields.
-- `NodeContent`: typed references to Markdown/text and local media. Binary media stays in files.
+- `NodeContent`: typed references to editable Markdown/text, annotated images, links, audio, video, and arbitrary local files. Binary media stays in project-scoped files.
 - `ProjectStore`: owns local persistence and selected-project state; views do not write files independently.
 - `NodeTreeView`: renders hierarchy and routes actions to the store.
-- `FilmstripScrubber`: row-level view maps pointer position to an index across the entire image collection and renders a moving thumbnail window. No separate slider.
+- `FilmstripScrubber`: row-level view maps pointer position to an index across the entire image collection and renders a moving thumbnail window with no internal leading/trailing padding. No separate slider.
+- `Content workspace`: selected node content is indexed at left and edited/previewed at right by type; images expose their own annotation field and Markdown documents save in place.
 - `ProjectKnowledgeWidget`: compact, read-mostly project summary and shortcuts.
 
 ## Storage decision

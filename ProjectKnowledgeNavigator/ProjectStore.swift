@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ProjectSummary: Identifiable, Codable, Hashable {
     var id: UUID
@@ -23,7 +24,11 @@ final class ProjectStore: ObservableObject {
     private let catalogURL: URL
     private let syncWidgetDefaults: Bool
     private var projectsDirectory: URL { rootDirectory.appendingPathComponent("Projects", isDirectory: true) }
-    var mediaDirectoryURL: URL { rootDirectory.appendingPathComponent("Media", isDirectory: true) }
+    var projectFilesDirectoryURL: URL {
+        rootDirectory.appendingPathComponent("ProjectFiles", isDirectory: true).appendingPathComponent(manifest.projectID.uuidString, isDirectory: true)
+    }
+    var mediaDirectoryURL: URL { projectFilesDirectoryURL.appendingPathComponent("Media", isDirectory: true) }
+    var documentsDirectoryURL: URL { projectFilesDirectoryURL.appendingPathComponent("Documents", isDirectory: true) }
 
     init(rootDirectory: URL? = nil) {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -118,23 +123,89 @@ final class ProjectStore: ObservableObject {
         save()
     }
 
-    func importImages(_ urls: [URL], to nodeID: UUID) {
+    func addDocument(to nodeID: UUID) {
+        do {
+            try FileManager.default.createDirectory(at: documentsDirectoryURL, withIntermediateDirectories: true)
+            let id = UUID()
+            let filename = "Document-\(id.uuidString).md"
+            let destination = documentsDirectoryURL.appendingPathComponent(filename)
+            try "# New Document\n\n".write(to: destination, atomically: true, encoding: .utf8)
+            let item = NodeContent(id: id, kind: .markdown, title: "New Document", path: relativePath(for: destination))
+            _ = manifest.root.updateNode(id: nodeID) { $0.content.append(item) }
+            save()
+        } catch { assertionFailure("Could not create document: \(error)") }
+    }
+
+    func importItems(_ urls: [URL], to nodeID: UUID) {
         guard !urls.isEmpty else { return }
         do {
             try FileManager.default.createDirectory(at: mediaDirectoryURL, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: documentsDirectoryURL, withIntermediateDirectories: true)
             var imported: [NodeContent] = []
             for source in urls {
                 let accessed = source.startAccessingSecurityScopedResource()
                 defer { if accessed { source.stopAccessingSecurityScopedResource() } }
-                let ext = source.pathExtension.isEmpty ? "img" : source.pathExtension
-                let filename = "\(UUID().uuidString).\(ext)"
-                let destination = mediaDirectoryURL.appendingPathComponent(filename)
+                let ext = source.pathExtension
+                let type = UTType(filenameExtension: ext)
+                let kind: NodeContent.Kind
+                if type?.conforms(to: .image) == true { kind = .image }
+                else if type?.conforms(to: .audio) == true { kind = .audio }
+                else if type?.conforms(to: .movie) == true || type?.conforms(to: .video) == true { kind = .video }
+                else if ["md", "markdown", "txt", "rtf"].contains(ext.lowercased()) { kind = .markdown }
+                else { kind = .file }
+                let folder = kind == .markdown ? documentsDirectoryURL : mediaDirectoryURL
+                let filename = "\(UUID().uuidString)-\(source.lastPathComponent)"
+                let destination = folder.appendingPathComponent(filename)
                 try FileManager.default.copyItem(at: source, to: destination)
-                imported.append(NodeContent(kind: .image, title: source.deletingPathExtension().lastPathComponent, path: "Media/\(filename)"))
+                imported.append(NodeContent(kind: kind, title: source.deletingPathExtension().lastPathComponent, path: relativePath(for: destination)))
             }
             _ = manifest.root.updateNode(id: nodeID) { $0.content.append(contentsOf: imported) }
             save()
-        } catch { assertionFailure("Could not import images: \(error)") }
+        } catch { assertionFailure("Could not import content: \(error)") }
+    }
+
+    func addLink(to nodeID: UUID, title rawTitle: String, url rawURL: String) {
+        let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = rawURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty, let url = URL(string: value), ["https", "http"].contains(url.scheme?.lowercased() ?? "") else { return }
+        let item = NodeContent(kind: .link, title: title.isEmpty ? value : title, path: url.absoluteString)
+        _ = manifest.root.updateNode(id: nodeID) { $0.content.append(item) }
+        save()
+    }
+
+    func updateAnnotation(nodeID: UUID, itemID: UUID, annotation: String) {
+        _ = manifest.root.updateNode(id: nodeID) { node in
+            guard let index = node.content.firstIndex(where: { $0.id == itemID }) else { return }
+            node.content[index].annotation = annotation
+        }
+        save()
+    }
+
+    func updateDocument(nodeID: UUID, itemID: UUID, title rawTitle: String, body: String) {
+        let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let node = manifest.root.node(id: nodeID), let item = node.content.first(where: { $0.id == itemID }), item.kind == .markdown else { return }
+        do {
+            try body.write(to: mediaURL(for: item), atomically: true, encoding: .utf8)
+            _ = manifest.root.updateNode(id: nodeID) { current in
+                guard let index = current.content.firstIndex(where: { $0.id == itemID }) else { return }
+                if !title.isEmpty { current.content[index].title = title }
+            }
+            save()
+        } catch { assertionFailure("Could not save document: \(error)") }
+    }
+
+    func documentBody(for item: NodeContent) -> String {
+        (try? String(contentsOf: mediaURL(for: item), encoding: .utf8)) ?? ""
+    }
+
+    func removeContent(nodeID: UUID, itemID: UUID) {
+        _ = manifest.root.updateNode(id: nodeID) { $0.content.removeAll { $0.id == itemID } }
+        save()
+    }
+
+    private func relativePath(for url: URL) -> String {
+        let base = rootDirectory.path.hasSuffix("/") ? rootDirectory.path : rootDirectory.path + "/"
+        return url.path.hasPrefix(base) ? String(url.path.dropFirst(base.count)) : url.path
     }
 
     func mediaURL(for item: NodeContent) -> URL {

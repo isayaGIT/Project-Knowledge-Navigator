@@ -23,14 +23,16 @@ struct ProjectNode: Identifiable, Codable, Equatable {
 }
 
 struct NodeContent: Identifiable, Codable, Equatable {
-    enum Kind: String, Codable { case markdown, image, audio, video, link }
+    enum Kind: String, Codable { case markdown, image, audio, video, link, file }
     var id: UUID
     var kind: Kind
     var title: String
-    /// Relative to the project data directory where possible.
+    /// Relative to the local app data directory where possible.
     var path: String
-    init(id: UUID = UUID(), kind: Kind, title: String, path: String) {
-        self.id = id; self.kind = kind; self.title = title; self.path = path
+    /// User-authored image notes, source context, or other item-specific annotation.
+    var annotation: String?
+    init(id: UUID = UUID(), kind: Kind, title: String, path: String, annotation: String? = nil) {
+        self.id = id; self.kind = kind; self.title = title; self.path = path; self.annotation = annotation
     }
 }
 

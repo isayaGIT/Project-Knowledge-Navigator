@@ -8,14 +8,15 @@ A native macOS app for navigating and maintaining project knowledge through one 
 - A node has a stable ID, title, zero or more child nodes, and zero or more content items.
 - Nesting has no application-imposed maximum depth.
 - A node may simultaneously have children and content; it is not required to be either a folder or a file.
-- Content can include Markdown/text, images, audio, video, and external links. A node may contain any number of media items.
+- Content can include editable Markdown/text documents, images with per-image annotations, audio, video, arbitrary files, and external links. A node may contain any number of mixed content items.
 - Topics such as `Rooms`, `Design`, `Furniture`, or `Lighting Design` are ordinary nodes, not fixed schema types. Do not require `Benchmarks`, `Skills`, or `References` wrapper folders.
 
 ## Primary interaction
 - Main view: compact indented list with expandable/collapsible nodes.
 - Indentation communicates hierarchy; visual depth does not constrain data depth.
 - Each row shows the node title and a concise content-aware preview.
-- Multiple images can appear directly in a node row as a filmstrip.
+- Multiple images can appear directly in a node row as a filmstrip; the strip begins at the first thumbnail and has no internal leading/trailing padding.
+- The opened node uses a document workspace: a compact content index plus a type-aware editor/preview. Images are shown large with a persistent annotation field; documents are editable in place. The detail workspace does not duplicate the row filmstrip.
 - The filmstrip itself is the scrubber. Clicking a point selects the corresponding position across the complete image sequence. Pressing and dragging scrubs continuously as the pointer moves. No separate slider, thumb, or previous/next controls are required.
 - As collections grow, load thumbnails lazily and full-resolution media on demand.
 - Other content uses a restrained preview: document title/icon, audio waveform, or video poster.
@@ -37,7 +38,7 @@ Initial implementation focuses on node model, navigation, inline filmstrip inter
 
 ## Acceptance criteria
 1. Nodes nest recursively without a fixed depth limit.
-2. A node can contain children and multiple media items simultaneously.
+2. A node can contain children and mixed content items simultaneously, including documents, annotated images, links, audio, video, and arbitrary files.
 3. A node row can render multiple image thumbnails inline.
 4. Clicking or dragging directly on the filmstrip maps pointer position to the corresponding image in the entire collection.
 5. No separate progress slider or mandatory carousel buttons.
