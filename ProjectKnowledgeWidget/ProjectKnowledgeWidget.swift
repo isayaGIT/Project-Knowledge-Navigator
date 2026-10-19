@@ -45,7 +45,8 @@ struct ProjectWidgetView: View {
             Spacer(minLength: 0)
             Text("Project Knowledge Navigator").font(.system(size: 9)).foregroundStyle(.tertiary)
         }.padding().containerBackground(.background, for: .widget)
-        .widgetURL(URL(string: "pkn://open/\(entry.projectID)/\(entry.nodeIDs.first ?? "")"))
+        // Tapping unused space anywhere on the widget opens the app.
+        .widgetURL(URL(string: "pkn://open"))
     }
 }
 

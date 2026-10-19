@@ -48,11 +48,13 @@ struct ContentView: View {
         .onChange(of: store.selectedNodeID) { _, _ in selectedContentID = nil }
         .onChange(of: store.selectedProjectID) { _, _ in selectedContentID = nil }
         .onOpenURL { url in
+            guard url.scheme == "pkn" else { return }
             let parts = url.pathComponents.filter { $0 != "/" }
-            if url.scheme == "pkn", parts.count >= 2,
-               let projectID = UUID(uuidString: parts[0]), let nodeID = UUID(uuidString: parts[1]) {
-                store.open(projectID: projectID, nodeID: nodeID)
-            }
+            // pkn://open alone is the widget's app-launch action; the host is "open".
+            guard parts.count >= 2,
+                  let projectID = UUID(uuidString: parts[0]),
+                  let nodeID = UUID(uuidString: parts[1]) else { return }
+            store.open(projectID: projectID, nodeID: nodeID)
         }
         .alert("New Project", isPresented: $showNewProject) {
             TextField("Project name", text: $newProjectName)

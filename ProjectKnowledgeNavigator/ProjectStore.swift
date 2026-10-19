@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
+import WidgetKit
 
 struct ProjectSummary: Identifiable, Codable, Hashable {
     var id: UUID
@@ -62,6 +63,7 @@ final class ProjectStore: ObservableObject {
         self.expandedNodeIDs = Self.ancestorIDs(in: loadedManifest.root, target: selectedNode)
         persistCurrent()
         persistCatalog()
+        syncWidgetSummary()
     }
 
     func select(_ node: ProjectNode) { selectedNodeID = node.id; save() }
@@ -81,7 +83,7 @@ final class ProjectStore: ObservableObject {
         manifest = next
         selectedNodeID = root.id
         expandedNodeIDs = [root.id]
-        persistCurrent(); persistCatalog()
+        persistCurrent(); persistCatalog(); syncWidgetSummary()
     }
 
     func selectProject(_ id: UUID) {
@@ -95,6 +97,7 @@ final class ProjectStore: ObservableObject {
         selectedNodeID = next.selectedNodeID ?? next.root.id
         expandedNodeIDs = Self.ancestorIDs(in: next.root, target: selectedNodeID ?? next.root.id)
         persistCatalog()
+        syncWidgetSummary()
     }
 
     func open(projectID: UUID, nodeID: UUID) {
@@ -215,7 +218,17 @@ final class ProjectStore: ObservableObject {
 
     func save() {
         manifest.selectedNodeID = selectedNodeID
-        persistCurrent(); persistCatalog()
+        persistCurrent(); persistCatalog(); syncWidgetSummary()
+    }
+
+    private func syncWidgetSummary() {
+        guard syncWidgetDefaults, let defaults = UserDefaults(suiteName: "group.com.isayaGIT.ProjectKnowledgeNavigator") else { return }
+        let nodes = manifest.root.children.prefix(3).map { $0 }
+        defaults.set(manifest.name, forKey: "currentProjectName")
+        defaults.set(manifest.projectID.uuidString, forKey: "currentProjectID")
+        defaults.set(nodes.map(\.title), forKey: "currentProjectNodeTitles")
+        defaults.set(nodes.map { $0.id.uuidString }, forKey: "currentProjectNodeIDs")
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     private func manifestURL(for id: UUID) -> URL { projectsDirectory.appendingPathComponent("\(id.uuidString).json") }
