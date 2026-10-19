@@ -107,8 +107,15 @@ final class ProjectStore: ObservableObject {
         expandedNodeIDs.insert(parent); selectedNodeID = child.id; save()
     }
 
-    func rename(_ node: ProjectNode, to title: String) {
-        _ = manifest.root.updateNode(id: node.id) { $0.title = title }; save()
+    func rename(_ node: ProjectNode, to rawTitle: String) {
+        let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        _ = manifest.root.updateNode(id: node.id) { $0.title = title }
+        if node.id == manifest.root.id {
+            manifest.name = title
+            if let index = projects.firstIndex(where: { $0.id == selectedProjectID }) { projects[index].name = title }
+        }
+        save()
     }
 
     func importImages(_ urls: [URL], to nodeID: UUID) {

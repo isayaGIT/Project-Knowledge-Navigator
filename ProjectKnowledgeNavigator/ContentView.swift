@@ -8,6 +8,9 @@ struct ContentView: View {
     @State private var newProjectName = ""
     @State private var imageImportNodeID: UUID?
     @State private var isImportingImages = false
+    @State private var showRenameNode = false
+    @State private var renameTitle = ""
+    @State private var renameTarget: ProjectNode?
 
     var body: some View {
         NavigationSplitView {
@@ -21,7 +24,11 @@ struct ContentView: View {
                     ForEach(store.projects) { project in Text(project.name).tag(project.id) }
                 }.labelsHidden().padding(.horizontal, 10).padding(.bottom, 8)
                 Divider()
-                TextField("Search nodes", text: $searchText).textFieldStyle(.roundedBorder).padding(10)
+                HStack(spacing: 6) {
+                    TextField("Search nodes", text: $searchText).textFieldStyle(.roundedBorder)
+                    Button { store.addChild(to: store.selectedNodeID) } label: { Image(systemName: "plus") }
+                        .buttonStyle(.borderless).help("Add a child node to the selected node")
+                }.padding(10)
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 3) {
                         NodeTreeRow(node: store.manifest.root, depth: 0, searchText: searchText)
@@ -42,6 +49,11 @@ struct ContentView: View {
             Button("Create") { store.createProject(named: newProjectName); newProjectName = "" }
             Button("Cancel", role: .cancel) { newProjectName = "" }
         } message: { Text("Each project has its own independent node structure and local data.") }
+        .alert("Rename Node", isPresented: $showRenameNode) {
+            TextField("Node name", text: $renameTitle)
+            Button("Save") { if let target = renameTarget { store.rename(target, to: renameTitle) }; renameTarget = nil }
+            Button("Cancel", role: .cancel) { renameTarget = nil }
+        }
         .fileImporter(isPresented: $isImportingImages, allowedContentTypes: [.image], allowsMultipleSelection: true) { result in
             if case .success(let urls) = result, let target = imageImportNodeID { store.importImages(urls, to: target) }
             imageImportNodeID = nil
@@ -53,7 +65,11 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("PROJECT NODE").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    Text(node.title).font(.largeTitle.weight(.semibold))
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(node.title).font(.largeTitle.weight(.semibold))
+                        Button { renameTarget = node; renameTitle = node.title; showRenameNode = true } label: { Image(systemName: "pencil") }
+                            .buttonStyle(.borderless).foregroundStyle(.secondary).help("Rename node")
+                    }
                     Text("\(node.children.count) child nodes · \(node.content.count) content items").font(.subheadline).foregroundStyle(.secondary)
                 }
                 HStack {
