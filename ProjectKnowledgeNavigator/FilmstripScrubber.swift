@@ -25,7 +25,8 @@ struct FilmstripScrubber: View {
                                 .frame(width: frameWidth, height: geometry.size.height - 6)
                         }
                     }
-                    .offset(x: stripOffset(width: width, count: count, selected: current, startIndex: startIndex))
+                    // The HStack already contains only the visible slice. Do not offset it
+                    // by startIndex again, or the final frames shift left and leave a blank tail.
                     .frame(height: geometry.size.height, alignment: .leading)
                 }
                 RoundedRectangle(cornerRadius: 6).stroke(isScrubbing ? Color.accentColor : Color.primary.opacity(0.10), lineWidth: isScrubbing ? 2 : 1).allowsHitTesting(false)
@@ -62,9 +63,4 @@ struct FilmstripScrubber: View {
         .accessibilityLabel(item.title)
     }
 
-    private func stripOffset(width: CGFloat, count: Int, selected: Int, startIndex: Int) -> CGFloat {
-        let totalWidth = CGFloat(count) * frameWidth + CGFloat(max(0, count - 1)) * frameGap
-        if totalWidth <= width { return 0 }
-        return -CGFloat(startIndex) * (frameWidth + frameGap)
-    }
 }
