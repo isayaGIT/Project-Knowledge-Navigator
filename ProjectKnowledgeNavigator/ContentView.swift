@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var selectedContentID: UUID?
     @State private var documentTitle = ""
     @State private var documentBody = ""
+    @State private var isEditingMarkdown = false
     @State private var imageAnnotation = ""
     @State private var showAddLink = false
     @State private var linkTitle = ""
@@ -109,7 +110,7 @@ struct ContentView: View {
                         Divider()
                         contentEditor(for: node)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }.frame(minHeight: 320, maxHeight: .infinity)
+                    }.frame(minHeight: 420, idealHeight: 460, maxHeight: 460)
                 } else {
                     ContentUnavailableView("No content yet", systemImage: "doc.richtext", description: Text("Add a document, image, file, audio, video, or link to this node."))
                         .frame(maxWidth: .infinity, minHeight: 180)
@@ -159,23 +160,28 @@ struct ContentView: View {
                                 Spacer(minLength: 0)
                             }
                             if kind == .image {
-                                LazyVGrid(columns: [GridItem(.flexible(), spacing: 4), GridItem(.flexible(), spacing: 4), GridItem(.flexible(), spacing: 4)], alignment: .leading, spacing: 4) {
-                                    ForEach(items) { item in
-                                        Button { selectContent(item, in: node) } label: {
-                                            ZStack {
-                                                RoundedRectangle(cornerRadius: 5).fill(.quaternary.opacity(0.55))
-                                                if let image = NSImage(contentsOf: store.mediaURL(for: item)) {
-                                                    Image(nsImage: image).resizable().scaledToFill().frame(height: 48).clipped()
-                                                } else {
-                                                    Image(systemName: "photo").foregroundStyle(.secondary).frame(height: 48)
+                                VStack(spacing: 4) {
+                                    ForEach(Array(imageRows(items).enumerated()), id: \.offset) { _, row in
+                                        HStack(spacing: 4) {
+                                            ForEach(row) { item in
+                                                Button { selectContent(item, in: node) } label: {
+                                                    ZStack {
+                                                        RoundedRectangle(cornerRadius: 5).fill(.quaternary.opacity(0.55))
+                                                        if let image = NSImage(contentsOf: store.mediaURL(for: item)) {
+                                                            Image(nsImage: image).resizable().scaledToFill().frame(height: 48).clipped()
+                                                        } else {
+                                                            Image(systemName: "photo").foregroundStyle(.secondary).frame(height: 48)
+                                                        }
+                                                    }
+                                                    .frame(maxWidth: .infinity).frame(height: 48).clipShape(RoundedRectangle(cornerRadius: 5))
+                                                    .overlay(RoundedRectangle(cornerRadius: 5).stroke(isSelected(item, in: node) ? Color.accentColor : Color.clear, lineWidth: 2))
+                                                    .contentShape(RoundedRectangle(cornerRadius: 5))
                                                 }
+                                                .buttonStyle(.plain).help(item.title)
+                                                .contextMenu { removeContentButton(item, node: node) }
                                             }
-                                            .frame(height: 48).clipShape(RoundedRectangle(cornerRadius: 5))
-                                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(isSelected(item, in: node) ? Color.accentColor : Color.clear, lineWidth: 2))
-                                            .contentShape(RoundedRectangle(cornerRadius: 5))
+                                            if row.count < 3 { ForEach(0..<(3-row.count), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity).frame(height: 48) } }
                                         }
-                                        .buttonStyle(.plain).help(item.title)
-                                        .contextMenu { removeContentButton(item, node: node) }
                                     }
                                 }
                             } else {
@@ -208,6 +214,12 @@ struct ContentView: View {
         .scrollIndicators(.visible)
         .frame(maxHeight: .infinity)
         .onAppear { if selectedContentID == nil, let first = node.content.first { selectContent(first, in: node) } }
+    }
+
+    private func imageRows(_ items: [NodeContent]) -> [[NodeContent]] {
+        stride(from: 0, to: items.count, by: 3).map { start in
+            Array(items[start..<min(start + 3, items.count)])
+        }
     }
 
     private func importDroppedFiles(_ providers: [NSItemProvider], to nodeID: UUID) -> Bool {
@@ -268,7 +280,7 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Image(systemName: symbol(for: item.kind)).foregroundStyle(.secondary)
-                    Text(item.title).font(.headline).lineLimit(1)
+                    if item.kind != .markdown { Text(item.title).font(.headline).lineLimit(1) }
                     Spacer()
                     if item.kind == .link {
                         Button("Open Link") { if let url = URL(string: item.path) { NSWorkspace.shared.open(url) } }
@@ -282,15 +294,33 @@ struct ContentView: View {
                 case .markdown:
                     VStack(alignment: .leading, spacing: 8) {
                         TextField("Document title", text: $documentTitle)
-                            .textFieldStyle(.roundedBorder).font(.title3)
-                        TextEditor(text: $documentBody)
-                            .font(.system(.body, design: .monospaced))
-                            .padding(6)
-                            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 8))
-                            .onChange(of: documentBody) { _, newValue in store.updateDocument(nodeID: node.id, itemID: item.id, title: documentTitle, body: newValue) }
+                            .textFieldStyle(.plain).font(.title2.weight(.semibold))
                             .onChange(of: documentTitle) { _, newValue in store.updateDocument(nodeID: node.id, itemID: item.id, title: newValue, body: documentBody) }
-                        Text("Markdown · changes save locally").font(.caption).foregroundStyle(.secondary)
+                        HStack {
+                            Text("Markdown").font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Button(isEditingMarkdown ? "Preview" : "Edit Markdown") { isEditingMarkdown.toggle() }
+                                .buttonStyle(.borderless)
+                        }
+                        Group {
+                            if isEditingMarkdown {
+                                TextEditor(text: $documentBody)
+                                    .font(.system(.body, design: .monospaced))
+                                    .padding(6)
+                                    .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 8))
+                                    .onChange(of: documentBody) { _, newValue in store.updateDocument(nodeID: node.id, itemID: item.id, title: documentTitle, body: newValue) }
+                            } else {
+                                ScrollView {
+                                    MarkdownText(document: documentBody.isEmpty ? "*Empty document*" : documentBody)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(12)
+                                }
+                                .background(.quaternary.opacity(0.18), in: RoundedRectangle(cornerRadius: 8))
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
+                    .frame(maxHeight: .infinity)
                 case .link:
                     ContentUnavailableView(item.path, systemImage: "link", description: Text("External link attached to this node."))
                 case .audio:
@@ -339,6 +369,7 @@ struct ContentView: View {
         if item.kind == .markdown {
             documentTitle = item.title
             documentBody = store.documentBody(for: item)
+            isEditingMarkdown = false
         }
         if item.kind == .image { imageAnnotation = item.annotation ?? "" }
     }
@@ -356,6 +387,16 @@ struct ContentView: View {
         case .link: "link"
         case .file: "doc"
         }
+    }
+}
+
+private struct MarkdownText: View {
+    let document: String
+
+    var body: some View {
+        Text((try? AttributedString(markdown: document, options: .init(interpretedSyntax: .full))) ?? AttributedString(document))
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
