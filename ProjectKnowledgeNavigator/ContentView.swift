@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var newProjectName = ""
     @State private var importTargetNodeID: UUID?
     @State private var isImportingItems = false
+    @State private var isDropTargeted = false
     @State private var showRenameNode = false
     @State private var renameTitle = ""
     @State private var renameTarget: ProjectNode?
@@ -125,7 +126,20 @@ struct ContentView: View {
                     }
                 }
                 Spacer(minLength: 0)
-            }.padding(28).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
+            .padding(28)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .overlay {
+                if isDropTargeted {
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 3, dash: [8, 5]))
+                        .padding(8)
+                        .allowsHitTesting(false)
+                }
+            }
+            .onDrop(of: [UTType.fileURL], isTargeted: $isDropTargeted) { providers in
+                importDroppedFiles(providers, to: node.id)
+            }
         } else { ContentUnavailableView("Select a node", systemImage: "point.3.connected.trianglepath.dotted") }
     }
 
@@ -133,7 +147,7 @@ struct ContentView: View {
 
     private func contentIndex(for node: ProjectNode) -> some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 14) {
                 ForEach(contentKindOrder, id: \.self) { kind in
                     let items = node.content.filter { $0.kind == kind }
                     if !items.isEmpty {
@@ -191,7 +205,44 @@ struct ContentView: View {
             }
             .padding(.trailing, 3)
         }
+        .scrollIndicators(.visible)
+        .frame(maxHeight: .infinity)
         .onAppear { if selectedContentID == nil, let first = node.content.first { selectContent(first, in: node) } }
+    }
+
+    private func importDroppedFiles(_ providers: [NSItemProvider], to nodeID: UUID) -> Bool {
+        let candidates = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) }
+        guard !candidates.isEmpty else { return false }
+
+        let group = DispatchGroup()
+        let lock = NSLock()
+        var urls: [URL] = []
+        for provider in candidates {
+            group.enter()
+            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                let url: URL?
+                if let value = item as? URL {
+                    url = value
+                } else if let value = item as? NSURL {
+                    url = value as URL
+                } else if let data = item as? Data {
+                    url = URL(dataRepresentation: data, relativeTo: nil)
+                } else {
+                    url = nil
+                }
+                if let url, url.isFileURL {
+                    lock.lock()
+                    urls.append(url)
+                    lock.unlock()
+                }
+                group.leave()
+            }
+        }
+        group.notify(queue: .main) {
+            let files = lock.withLock { urls }
+            if !files.isEmpty { store.importItems(files, to: nodeID) }
+        }
+        return true
     }
 
     @ViewBuilder private func removeContentButton(_ item: NodeContent, node: ProjectNode) -> some View {
