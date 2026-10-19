@@ -1,0 +1,66 @@
+name: ProjectKnowledgeNavigator
+options:
+  bundleIdPrefix: com.isayaGIT
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+targets:
+  ProjectKnowledgeNavigator:
+    type: application
+    platform: macOS
+    sources:
+      - path: ProjectKnowledgeNavigator
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.isayaGIT.ProjectKnowledgeNavigator
+        INFOPLIST_KEY_CFBundleDisplayName: Project Knowledge Navigator
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ProjectKnowledgeNavigator/Info.plist
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGN_ENTITLEMENTS: ProjectKnowledgeNavigator/ProjectKnowledgeNavigator.entitlements
+    dependencies:
+      - target: ProjectKnowledgeWidget
+        embed: true
+  ProjectKnowledgeWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: ProjectKnowledgeWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.isayaGIT.ProjectKnowledgeNavigator.Widget
+        PRODUCT_NAME: ProjectKnowledgeWidget
+        INFOPLIST_KEY_CFBundleDisplayName: Project Knowledge Widget
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ProjectKnowledgeWidget/Info.plist
+        CODE_SIGNING_ALLOWED: NO
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        CODE_SIGN_ENTITLEMENTS: ProjectKnowledgeWidget/ProjectKnowledgeWidget.entitlements
+  ProjectKnowledgeNavigatorTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+    hostApplication: ProjectKnowledgeNavigator
+    dependencies:
+      - target: ProjectKnowledgeNavigator
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.isayaGIT.ProjectKnowledgeNavigatorTests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
+
+schemes:
+  ProjectKnowledgeNavigator:
+    build:
+      targets:
+        ProjectKnowledgeNavigator: all
+        ProjectKnowledgeWidget: all
+    test:
+      targets:
+        - ProjectKnowledgeNavigatorTests

@@ -1,0 +1,534 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		2ED26BAF555A19452ACE9348 /* ProjectKnowledgeWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D7026918265EEC181C799042 /* ProjectKnowledgeWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7B302C181BE17EFB5B35540F /* ProjectStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389653CBAD607EEFE33C4BCA /* ProjectStore.swift */; };
+		891F68C664FBC61E78D0508B /* FilmstripScrubber.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE35186F221BF6D676A9AA1 /* FilmstripScrubber.swift */; };
+		D30E0E04981AAF070716CC6F /* ProjectKnowledgeNavigatorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEDE7BEA9D7AFA8B2D6B08C7 /* ProjectKnowledgeNavigatorApp.swift */; };
+		D73A0272F9DB726289C591E7 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B541B97F22FC1AF8D629BE73 /* ContentView.swift */; };
+		EE477B67C5CFE724B94D68B3 /* ProjectKnowledgeWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9B8E6562F6F66B135350D91 /* ProjectKnowledgeWidget.swift */; };
+		F23A21A11523A00457AAF5DE /* ProjectNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92C6AA5D0786699C75BE10C1 /* ProjectNode.swift */; };
+		FADF604AAAFA7469761F612F /* ProjectNodeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1C57D41629A1FEED87812E /* ProjectNodeTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		5021B213E768B17B5C943C82 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71712613BEC9EF82A024CF15 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 36B596750E3D27CA7D2904C4;
+			remoteInfo = ProjectKnowledgeWidget;
+		};
+		8DFD0E39037772491A76CA9E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71712613BEC9EF82A024CF15 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E3C895E595441600B53F7D8B;
+			remoteInfo = ProjectKnowledgeNavigator;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A7BD6141780F8BECF36F70B2 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				2ED26BAF555A19452ACE9348 /* ProjectKnowledgeWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		1505D6755A1647DE1F23824E /* ProjectKnowledgeNavigator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ProjectKnowledgeNavigator.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		389653CBAD607EEFE33C4BCA /* ProjectStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectStore.swift; sourceTree = "<group>"; };
+		3E9F862D4DFEB3111B6F36D5 /* ProjectKnowledgeWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ProjectKnowledgeWidget.entitlements; sourceTree = "<group>"; };
+		7F1C57D41629A1FEED87812E /* ProjectNodeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectNodeTests.swift; sourceTree = "<group>"; };
+		92C6AA5D0786699C75BE10C1 /* ProjectNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectNode.swift; sourceTree = "<group>"; };
+		9D0654AB05FF340292B9AEEF /* ProjectKnowledgeNavigator.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ProjectKnowledgeNavigator.entitlements; sourceTree = "<group>"; };
+		A83E3EEB9F938A7D23814B70 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		B541B97F22FC1AF8D629BE73 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		BBD837BC468333019872B11E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		C9B8E6562F6F66B135350D91 /* ProjectKnowledgeWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectKnowledgeWidget.swift; sourceTree = "<group>"; };
+		CBE35186F221BF6D676A9AA1 /* FilmstripScrubber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmstripScrubber.swift; sourceTree = "<group>"; };
+		D22D7D23CC932842BD61A642 /* ProjectKnowledgeNavigatorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ProjectKnowledgeNavigatorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D7026918265EEC181C799042 /* ProjectKnowledgeWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ProjectKnowledgeWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FEDE7BEA9D7AFA8B2D6B08C7 /* ProjectKnowledgeNavigatorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectKnowledgeNavigatorApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1350FB6821CDA5AE85049D59 /* ProjectKnowledgeWidget */ = {
+			isa = PBXGroup;
+			children = (
+				BBD837BC468333019872B11E /* Info.plist */,
+				3E9F862D4DFEB3111B6F36D5 /* ProjectKnowledgeWidget.entitlements */,
+				C9B8E6562F6F66B135350D91 /* ProjectKnowledgeWidget.swift */,
+			);
+			path = ProjectKnowledgeWidget;
+			sourceTree = "<group>";
+		};
+		25ACEDE2AD31010FAD9909E9 /* ProjectKnowledgeNavigator */ = {
+			isa = PBXGroup;
+			children = (
+				B541B97F22FC1AF8D629BE73 /* ContentView.swift */,
+				CBE35186F221BF6D676A9AA1 /* FilmstripScrubber.swift */,
+				A83E3EEB9F938A7D23814B70 /* Info.plist */,
+				9D0654AB05FF340292B9AEEF /* ProjectKnowledgeNavigator.entitlements */,
+				FEDE7BEA9D7AFA8B2D6B08C7 /* ProjectKnowledgeNavigatorApp.swift */,
+				92C6AA5D0786699C75BE10C1 /* ProjectNode.swift */,
+				389653CBAD607EEFE33C4BCA /* ProjectStore.swift */,
+			);
+			path = ProjectKnowledgeNavigator;
+			sourceTree = "<group>";
+		};
+		638842BA19A38C6CAC391421 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				7F1C57D41629A1FEED87812E /* ProjectNodeTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		92256A874E7B6C89B96931F5 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1505D6755A1647DE1F23824E /* ProjectKnowledgeNavigator.app */,
+				D22D7D23CC932842BD61A642 /* ProjectKnowledgeNavigatorTests.xctest */,
+				D7026918265EEC181C799042 /* ProjectKnowledgeWidget.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B09974A0775A3940BA91CE3E = {
+			isa = PBXGroup;
+			children = (
+				25ACEDE2AD31010FAD9909E9 /* ProjectKnowledgeNavigator */,
+				1350FB6821CDA5AE85049D59 /* ProjectKnowledgeWidget */,
+				638842BA19A38C6CAC391421 /* Tests */,
+				92256A874E7B6C89B96931F5 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0C12079604D531D7131C97E5 /* ProjectKnowledgeNavigatorTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B11CA5BD81DA4A5F1E82E7AF /* Build configuration list for PBXNativeTarget "ProjectKnowledgeNavigatorTests" */;
+			buildPhases = (
+				486A5ACE5E9586741316351A /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				465B53022527F4896DF0069F /* PBXTargetDependency */,
+			);
+			name = ProjectKnowledgeNavigatorTests;
+			packageProductDependencies = (
+			);
+			productName = ProjectKnowledgeNavigatorTests;
+			productReference = D22D7D23CC932842BD61A642 /* ProjectKnowledgeNavigatorTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		36B596750E3D27CA7D2904C4 /* ProjectKnowledgeWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 783349A5EAA68CFE7B502872 /* Build configuration list for PBXNativeTarget "ProjectKnowledgeWidget" */;
+			buildPhases = (
+				C7E285A5D234D5733B0EBFD0 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ProjectKnowledgeWidget;
+			packageProductDependencies = (
+			);
+			productName = ProjectKnowledgeWidget;
+			productReference = D7026918265EEC181C799042 /* ProjectKnowledgeWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		E3C895E595441600B53F7D8B /* ProjectKnowledgeNavigator */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D40678000C6627F162C8946A /* Build configuration list for PBXNativeTarget "ProjectKnowledgeNavigator" */;
+			buildPhases = (
+				DDC2F6DCBAF777FB0D4BEF31 /* Sources */,
+				A7BD6141780F8BECF36F70B2 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FFED38F7DABA2BD351BF2B13 /* PBXTargetDependency */,
+			);
+			name = ProjectKnowledgeNavigator;
+			packageProductDependencies = (
+			);
+			productName = ProjectKnowledgeNavigator;
+			productReference = 1505D6755A1647DE1F23824E /* ProjectKnowledgeNavigator.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		71712613BEC9EF82A024CF15 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 5767033AC108CC28BAB33646 /* Build configuration list for PBXProject "ProjectKnowledgeNavigator" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = B09974A0775A3940BA91CE3E;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 92256A874E7B6C89B96931F5 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E3C895E595441600B53F7D8B /* ProjectKnowledgeNavigator */,
+				36B596750E3D27CA7D2904C4 /* ProjectKnowledgeWidget */,
+				0C12079604D531D7131C97E5 /* ProjectKnowledgeNavigatorTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		486A5ACE5E9586741316351A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FADF604AAAFA7469761F612F /* ProjectNodeTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C7E285A5D234D5733B0EBFD0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EE477B67C5CFE724B94D68B3 /* ProjectKnowledgeWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DDC2F6DCBAF777FB0D4BEF31 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D73A0272F9DB726289C591E7 /* ContentView.swift in Sources */,
+				891F68C664FBC61E78D0508B /* FilmstripScrubber.swift in Sources */,
+				D30E0E04981AAF070716CC6F /* ProjectKnowledgeNavigatorApp.swift in Sources */,
+				F23A21A11523A00457AAF5DE /* ProjectNode.swift in Sources */,
+				7B302C181BE17EFB5B35540F /* ProjectStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		465B53022527F4896DF0069F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E3C895E595441600B53F7D8B /* ProjectKnowledgeNavigator */;
+			targetProxy = 8DFD0E39037772491A76CA9E /* PBXContainerItemProxy */;
+		};
+		FFED38F7DABA2BD351BF2B13 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 36B596750E3D27CA7D2904C4 /* ProjectKnowledgeWidget */;
+			targetProxy = 5021B213E768B17B5C943C82 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		17A896A6249FD838EAC345F5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_ENTITLEMENTS = ProjectKnowledgeWidget/ProjectKnowledgeWidget.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ProjectKnowledgeWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Project Knowledge Widget";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.isayaGIT.ProjectKnowledgeNavigator.Widget;
+				PRODUCT_NAME = ProjectKnowledgeWidget;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		24CDD50E15AAD93E39696341 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.isayaGIT.ProjectKnowledgeNavigatorTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ProjectKnowledgeNavigator.app/Contents/MacOS/ProjectKnowledgeNavigator";
+			};
+			name = Debug;
+		};
+		3398BC850EDE97F4C58A52E9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_ENTITLEMENTS = ProjectKnowledgeWidget/ProjectKnowledgeWidget.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ProjectKnowledgeWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Project Knowledge Widget";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.isayaGIT.ProjectKnowledgeNavigator.Widget;
+				PRODUCT_NAME = ProjectKnowledgeWidget;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		3D77E17675AA719549F52923 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Release;
+		};
+		40AAAF3C6CE8B1FBD29F1814 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Debug;
+		};
+		4384A443F01B31270DBD4336 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_ENTITLEMENTS = ProjectKnowledgeNavigator/ProjectKnowledgeNavigator.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ProjectKnowledgeNavigator/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Project Knowledge Navigator";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.isayaGIT.ProjectKnowledgeNavigator;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		96457DB544D6694AF36119D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_ENTITLEMENTS = ProjectKnowledgeNavigator/ProjectKnowledgeNavigator.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ProjectKnowledgeNavigator/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Project Knowledge Navigator";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.isayaGIT.ProjectKnowledgeNavigator;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		B6CF070087B4BE829F64EF69 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.isayaGIT.ProjectKnowledgeNavigatorTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ProjectKnowledgeNavigator.app/Contents/MacOS/ProjectKnowledgeNavigator";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		5767033AC108CC28BAB33646 /* Build configuration list for PBXProject "ProjectKnowledgeNavigator" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				40AAAF3C6CE8B1FBD29F1814 /* Debug */,
+				3D77E17675AA719549F52923 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		783349A5EAA68CFE7B502872 /* Build configuration list for PBXNativeTarget "ProjectKnowledgeWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3398BC850EDE97F4C58A52E9 /* Debug */,
+				17A896A6249FD838EAC345F5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B11CA5BD81DA4A5F1E82E7AF /* Build configuration list for PBXNativeTarget "ProjectKnowledgeNavigatorTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				24CDD50E15AAD93E39696341 /* Debug */,
+				B6CF070087B4BE829F64EF69 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D40678000C6627F162C8946A /* Build configuration list for PBXNativeTarget "ProjectKnowledgeNavigator" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4384A443F01B31270DBD4336 /* Debug */,
+				96457DB544D6694AF36119D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 71712613BEC9EF82A024CF15 /* Project object */;
+}
