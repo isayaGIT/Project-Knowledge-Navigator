@@ -127,28 +127,87 @@ struct ContentView: View {
         } else { ContentUnavailableView("Select a node", systemImage: "point.3.connected.trianglepath.dotted") }
     }
 
+    private let contentKindOrder: [NodeContent.Kind] = [.image, .video, .audio, .markdown, .file, .link]
+
     private func contentIndex(for node: ProjectNode) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            ForEach(node.content) { item in
-                Button { selectContent(item, in: node) } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: symbol(for: item.kind)).frame(width: 18).foregroundStyle(.secondary)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.title).lineLimit(1).font(.callout)
-                            if item.kind == .image, let note = item.annotation, !note.isEmpty {
-                                Text(note).lineLimit(1).font(.caption2).foregroundStyle(.secondary)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 14) {
+                ForEach(contentKindOrder, id: \.self) { kind in
+                    let items = node.content.filter { $0.kind == kind }
+                    if !items.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 5) {
+                                Image(systemName: symbol(for: kind)).font(.caption).foregroundStyle(.secondary)
+                                Text(groupTitle(for: kind)).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                                Text("\(items.count)").font(.caption2.monospacedDigit()).foregroundStyle(.tertiary)
+                                Spacer(minLength: 0)
+                            }
+                            if kind == .image {
+                                LazyVGrid(columns: [GridItem(.flexible(), spacing: 4), GridItem(.flexible(), spacing: 4), GridItem(.flexible(), spacing: 4)], alignment: .leading, spacing: 4) {
+                                    ForEach(items) { item in
+                                        Button { selectContent(item, in: node) } label: {
+                                            ZStack {
+                                                RoundedRectangle(cornerRadius: 5).fill(.quaternary.opacity(0.55))
+                                                if let image = NSImage(contentsOf: store.mediaURL(for: item)) {
+                                                    Image(nsImage: image).resizable().scaledToFill().frame(height: 48).clipped()
+                                                } else {
+                                                    Image(systemName: "photo").foregroundStyle(.secondary).frame(height: 48)
+                                                }
+                                            }
+                                            .frame(height: 48).clipShape(RoundedRectangle(cornerRadius: 5))
+                                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(isSelected(item, in: node) ? Color.accentColor : Color.clear, lineWidth: 2))
+                                            .contentShape(RoundedRectangle(cornerRadius: 5))
+                                        }
+                                        .buttonStyle(.plain).help(item.title)
+                                        .contextMenu { removeContentButton(item, node: node) }
+                                    }
+                                }
+                            } else {
+                                ForEach(items) { item in
+                                    Button { selectContent(item, in: node) } label: {
+                                        HStack(spacing: 7) {
+                                            Image(systemName: symbol(for: item.kind)).frame(width: 16).foregroundStyle(.secondary)
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(item.title).lineLimit(1).font(.callout)
+                                                if item.kind == .image, let note = item.annotation, !note.isEmpty {
+                                                    Text(note).lineLimit(1).font(.caption2).foregroundStyle(.secondary)
+                                                }
+                                            }
+                                            Spacer(minLength: 0)
+                                        }
+                                        .padding(.horizontal, 7).padding(.vertical, 6)
+                                        .background(isSelected(item, in: node) ? Color.accentColor.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 6))
+                                        .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .contextMenu { removeContentButton(item, node: node) }
+                                }
                             }
                         }
-                        Spacer(minLength: 0)
                     }
-                    .padding(.horizontal, 8).padding(.vertical, 7)
-                    .background(isSelected(item, in: node) ? Color.accentColor.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 7))
-                    .contentShape(Rectangle())
-                }.buttonStyle(.plain)
-                .contextMenu { Button(role: .destructive) { store.removeContent(nodeID: node.id, itemID: item.id); if selectedContentID == item.id { selectedContentID = nil } } label: { Label("Remove from node", systemImage: "minus.circle") } }
+                }
             }
+            .padding(.trailing, 3)
         }
         .onAppear { if selectedContentID == nil, let first = node.content.first { selectContent(first, in: node) } }
+    }
+
+    @ViewBuilder private func removeContentButton(_ item: NodeContent, node: ProjectNode) -> some View {
+        Button(role: .destructive) {
+            store.removeContent(nodeID: node.id, itemID: item.id)
+            if selectedContentID == item.id { selectedContentID = nil }
+        } label: { Label("Remove from node", systemImage: "minus.circle") }
+    }
+
+    private func groupTitle(for kind: NodeContent.Kind) -> String {
+        switch kind {
+        case .image: "Images"
+        case .video: "Videos"
+        case .audio: "Audio"
+        case .markdown: "Documents"
+        case .file: "Files"
+        case .link: "Links"
+        }
     }
 
     @ViewBuilder private func contentEditor(for node: ProjectNode) -> some View {
