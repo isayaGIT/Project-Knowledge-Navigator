@@ -188,13 +188,21 @@ final class ProjectStore: ObservableObject {
         let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let node = manifest.root.node(id: nodeID), let item = node.content.first(where: { $0.id == itemID }), item.kind == .markdown else { return }
         do {
-            try body.write(to: mediaURL(for: item), atomically: true, encoding: .utf8)
+            let destination = mediaURL(for: item)
+            try FileManager.default.createDirectory(
+                at: destination.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try body.write(to: destination, atomically: true, encoding: .utf8)
             _ = manifest.root.updateNode(id: nodeID) { current in
                 guard let index = current.content.firstIndex(where: { $0.id == itemID }) else { return }
                 if !title.isEmpty { current.content[index].title = title }
             }
             save()
-        } catch { assertionFailure("Could not save document: \(error)") }
+        } catch {
+            // Disk or path errors should not terminate the whole app while typing.
+            NSLog("Project Knowledge Navigator: could not save document '%@': %@", item.title, error.localizedDescription)
+        }
     }
 
     func documentBody(for item: NodeContent) -> String {
@@ -213,7 +221,12 @@ final class ProjectStore: ObservableObject {
 
     func mediaURL(for item: NodeContent) -> URL {
         if item.path.hasPrefix("/") { return URL(fileURLWithPath: item.path) }
-        return rootDirectory.appendingPathComponent(item.path)
+        // Current records store paths relative to the app data root; early/sample records
+        // stored paths relative to the project's own files directory.
+        if item.path.hasPrefix("ProjectFiles/") {
+            return rootDirectory.appendingPathComponent(item.path)
+        }
+        return projectFilesDirectoryURL.appendingPathComponent(item.path)
     }
 
     func save() {

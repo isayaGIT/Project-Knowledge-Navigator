@@ -78,6 +78,19 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertTrue(imported.path.contains(store.manifest.projectID.uuidString))
     }
 
+    func testSavingLegacyDocumentCreatesMissingParentDirectoryWithoutCrashing() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let node = try XCTUnwrap(store.manifest.root.children.first?.children.first?.children.first(where: { $0.title == "Lighting Design" }))
+        let item = try XCTUnwrap(node.content.first(where: { $0.kind == .markdown }))
+
+        store.updateDocument(nodeID: node.id, itemID: item.id, title: item.title, body: "# Lighting\n\nSaved safely.")
+
+        XCTAssertEqual(store.documentBody(for: item), "# Lighting\n\nSaved safely.")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: store.mediaURL(for: item).path))
+    }
+
     func testProjectsAndNodeStatePersistAcrossRelaunch() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
