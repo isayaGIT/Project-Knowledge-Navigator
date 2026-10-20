@@ -73,8 +73,7 @@ struct ProjectTreeRow: View {
                     .textFieldStyle(.plain)
                     .focused($titleFieldFocused)
                     .onSubmit {
-                        context.onRename(editingTitle)
-                        context.onSubmitEditing()
+                        context.onCommitEditing(editingTitle)
                     }
             } else {
                 Text(node.title)
