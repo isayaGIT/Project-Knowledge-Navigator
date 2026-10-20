@@ -100,6 +100,12 @@ struct ProjectTreeSidebar: View {
                         selectedNodeIDs = []
                         editingNodeID = nil
                     },
+                    onDeleteWithSelection: { ids, selectionID in
+                        isTreeEditingActive = false
+                        _ = store.deleteNodes(ids: ids, selecting: selectionID)
+                        selectedNodeIDs = selectionID.map { [$0] } ?? []
+                        editingNodeID = nil
+                    },
                     onIndent: { ids in
                         isTreeEditingActive = false
                         _ = store.indentNodes(ids: ids)

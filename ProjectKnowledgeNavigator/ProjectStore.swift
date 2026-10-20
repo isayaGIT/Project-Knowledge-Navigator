@@ -208,7 +208,7 @@ final class ProjectStore: ObservableObject {
     }
 
     /// Deletes selected node subtrees in one tree pass. Disk cleanup and persistence run off the UI thread.
-    @discardableResult func deleteNodes(ids: [UUID]) -> Int {
+    @discardableResult func deleteNodes(ids: [UUID], selecting preferredSelectionID: UUID? = nil) -> Int {
         let requested = Set(ids).subtracting([manifest.root.id])
         guard !requested.isEmpty else { return 0 }
         let cancelledProvisionalCreation = requested.count == 1
@@ -245,8 +245,9 @@ final class ProjectStore: ObservableObject {
         guard deletedCount > 0 else { return 0 }
 
         manifest.root = updatedRoot
-        selectedNodeID = manifest.root.id
-        manifest.selectedNodeID = manifest.root.id
+        let selectionAfterDeletion = preferredSelectionID.flatMap { updatedRoot.node(id: $0)?.id } ?? updatedRoot.id
+        selectedNodeID = selectionAfterDeletion
+        manifest.selectedNodeID = selectionAfterDeletion
         expandedNodeIDs.insert(manifest.root.id)
         for id in requested { pendingNodeCreationSnapshots.removeValue(forKey: id) }
 

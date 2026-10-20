@@ -292,6 +292,25 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertTrue(store.canRedoTreeChange)
     }
 
+    func testDeleteSelectsPreviousVisibleNodeAndRedoPreservesSelection() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let rooms = try XCTUnwrap(store.manifest.root.children.first(where: { $0.title == "Rooms" }))
+        let previousVisible = try XCTUnwrap(rooms.children.first(where: { $0.title == "Bathroom" }))
+        let deleted = try XCTUnwrap(store.manifest.root.children.first(where: { $0.title == "Character" }))
+
+        XCTAssertEqual(store.deleteNodes(ids: [deleted.id], selecting: previousVisible.id), 1)
+        XCTAssertEqual(store.selectedNodeID, previousVisible.id)
+
+        store.undoTreeChange()
+        XCTAssertNotNil(store.manifest.root.node(id: deleted.id))
+
+        store.redoTreeChange()
+        XCTAssertNil(store.manifest.root.node(id: deleted.id))
+        XCTAssertEqual(store.selectedNodeID, previousVisible.id)
+    }
+
     func testDeleteNodesNeverDeletesProjectRoot() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
