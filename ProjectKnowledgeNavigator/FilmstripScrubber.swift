@@ -1,38 +1,47 @@
 import SwiftUI
 
-/// Geometry helpers keep the visible frame window and its scroll position in the same coordinate system.
+/// Geometry helpers keep the filmstrip's pixel scroll, rendered window, and selection on one scale.
 enum FilmstripMetrics {
+    static func contentWidth(itemCount: Int, frameWidth: CGFloat, gap: CGFloat) -> CGFloat {
+        guard itemCount > 0 else { return 0 }
+        return CGFloat(itemCount) * frameWidth + CGFloat(max(0, itemCount - 1)) * gap
+    }
+
+    static func maxScrollOffset(width: CGFloat, itemCount: Int, frameWidth: CGFloat, gap: CGFloat) -> CGFloat {
+        max(0, contentWidth(itemCount: itemCount, frameWidth: frameWidth, gap: gap) - max(0, width))
+    }
+
+    static func scrollOffset(progress: CGFloat, width: CGFloat, itemCount: Int,
+                             frameWidth: CGFloat, gap: CGFloat) -> CGFloat {
+        let maxOffset = maxScrollOffset(width: width, itemCount: itemCount, frameWidth: frameWidth, gap: gap)
+        return min(max(progress, 0), 1) * maxOffset
+    }
+
+    static func firstVisibleIndex(scrollOffset: CGFloat, frameWidth: CGFloat, gap: CGFloat, itemCount: Int) -> Int {
+        guard itemCount > 0, frameWidth + gap > 0 else { return 0 }
+        return min(max(Int(floor(max(0, scrollOffset) / (frameWidth + gap))), 0), itemCount - 1)
+    }
+
+    /// The sub-frame offset makes the filmstrip move continuously instead of jumping one frame at a time.
+    static func partialFrameOffset(scrollOffset: CGFloat, frameWidth: CGFloat, gap: CGFloat) -> CGFloat {
+        let step = frameWidth + gap
+        guard step > 0 else { return 0 }
+        let offset = max(0, scrollOffset)
+        return offset - floor(offset / step) * step
+    }
+
     static func visibleCount(width: CGFloat, frameWidth: CGFloat, gap: CGFloat, itemCount: Int) -> Int {
         guard itemCount > 0 else { return 0 }
         let step = frameWidth + gap
         guard width > 0, step > 0 else { return 1 }
-        // Fit only whole frames. Using ceil would render a partial frame beyond the viewport edge.
         return min(itemCount, max(1, Int(floor((width + gap) / step))))
     }
 
-    /// A scrollbar thumb can only travel across the range not already occupied by the viewport.
-    static func scrollOffset(progress: CGFloat, itemCount: Int, visibleCount: Int) -> Int {
-        let maxOffset = max(0, itemCount - max(1, visibleCount))
-        let clampedProgress = min(max(progress, 0), 1)
-        return Int((clampedProgress * CGFloat(maxOffset)).rounded())
-    }
-
-    /// Select the frame whose center is nearest to the pointer in the visible window.
-    static func localIndex(x: CGFloat, frameWidth: CGFloat, gap: CGFloat, visibleCount: Int) -> Int {
-        guard visibleCount > 1 else { return 0 }
-        let step = frameWidth + gap
-        guard step > 0 else { return 0 }
-        let nearest = Int(((x - frameWidth / 2) / step).rounded())
-        return min(max(nearest, 0), visibleCount - 1)
-    }
-
-    static func selectedIndex(x: CGFloat, width: CGFloat, itemCount: Int, visibleCount: Int,
-                              frameWidth: CGFloat, gap: CGFloat) -> Int {
-        guard itemCount > 0 else { return 0 }
-        let progress = width > 0 ? min(max(x / width, 0), 1) : 0
-        let start = scrollOffset(progress: progress, itemCount: itemCount, visibleCount: visibleCount)
-        let local = localIndex(x: x, frameWidth: frameWidth, gap: gap, visibleCount: visibleCount)
-        return min(max(start + local, 0), itemCount - 1)
+    /// Select the frame whose center is nearest to the pointer's content-space coordinate.
+    static func selectedIndex(contentX: CGFloat, itemCount: Int, frameWidth: CGFloat, gap: CGFloat) -> Int {
+        guard itemCount > 0, frameWidth + gap > 0 else { return 0 }
+        let nearest = Int(((contentX - frameWidth / 2) / (frameWidth + gap)).rounded())
+        return min(max(nearest, 0), itemCount - 1)
     }
 }
 
@@ -49,42 +58,53 @@ struct FilmstripScrubber: View {
         GeometryReader { geometry in
             let width = geometry.size.width
             let count = items.count
+            let totalWidth = FilmstripMetrics.contentWidth(itemCount: count, frameWidth: frameWidth, gap: frameGap)
+            let scrollOffset = FilmstripMetrics.scrollOffset(
+                progress: scrollProgress, width: width, itemCount: count,
+                frameWidth: frameWidth, gap: frameGap
+            )
+            let startIndex = FilmstripMetrics.firstVisibleIndex(
+                scrollOffset: scrollOffset, frameWidth: frameWidth, gap: frameGap, itemCount: count
+            )
             let visibleCount = FilmstripMetrics.visibleCount(
                 width: width, frameWidth: frameWidth, gap: frameGap, itemCount: count
             )
-            let startIndex = FilmstripMetrics.scrollOffset(
-                progress: scrollProgress, itemCount: count, visibleCount: visibleCount
-            )
-            let endIndex = min(count, startIndex + visibleCount)
+            // Include extra frames for the fractional scroll at either edge; the viewport clips them.
+            let renderEndIndex = min(count, startIndex + visibleCount + 2)
             let pointerX = scrollProgress * width
             let current = FilmstripMetrics.selectedIndex(
-                x: pointerX, width: width, itemCount: count, visibleCount: visibleCount,
+                contentX: pointerX + scrollOffset, itemCount: count,
                 frameWidth: frameWidth, gap: frameGap
             )
 
-            ZStack(alignment: .leading) {
+            HStack(spacing: frameGap) {
                 if count > 0 {
-                    HStack(spacing: frameGap) {
-                        ForEach(startIndex..<endIndex, id: \.self) { index in
-                            thumbnail(for: items[index], index: index, selected: index == current)
-                                .frame(width: frameWidth, height: geometry.size.height - 6)
-                        }
+                    ForEach(startIndex..<renderEndIndex, id: \.self) { index in
+                        thumbnail(for: items[index], index: index, selected: index == current)
+                            .frame(width: frameWidth, height: geometry.size.height - 6)
                     }
-                    .frame(height: geometry.size.height, alignment: .leading)
                 }
+            }
+            .fixedSize(horizontal: true, vertical: false)
+            .offset(x: -FilmstripMetrics.partialFrameOffset(scrollOffset: scrollOffset, frameWidth: frameWidth, gap: frameGap))
+            .frame(width: width, height: geometry.size.height, alignment: .leading)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            // Draw the viewport border after clipping its contents so the border itself is never cut off.
+            .overlay {
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(isScrubbing ? Color.accentColor : Color.primary.opacity(0.10), lineWidth: isScrubbing ? 2 : 1)
                     .allowsHitTesting(false)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .local)
                 .onChanged { value in
                     isScrubbing = true
-                    guard count > 0, width > 0 else { scrollProgress = 0; return }
-                    // Progress controls the scroll offset; selection is the frame under the pointer.
-                    // Keeping these separate prevents the moving window from changing the drag scale.
+                    guard count > 0, width > 0, totalWidth > width else {
+                        scrollProgress = 0
+                        return
+                    }
+                    // Like a scrollbar, the pointer position maps to the whole scroll range.
+                    // Content then follows it in pixel space, without quantizing motion to frame steps.
                     scrollProgress = min(max(value.location.x / width, 0), 1)
                 }
                 .onEnded { _ in isScrubbing = false })

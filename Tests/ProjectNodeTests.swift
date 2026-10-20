@@ -39,24 +39,42 @@ final class ProjectNodeTests: XCTestCase {
         XCTAssertEqual(FilmstripMetrics.visibleCount(width: 510, frameWidth: 54, gap: 3, itemCount: 4), 4)
     }
 
-    func testFilmstripScrollRangeAndSelectionStayAlignedAcrossTheViewport() {
+    func testFilmstripPixelScrollIsContinuousAcrossFrameBoundaries() {
         let width: CGFloat = 510
-        let visible = FilmstripMetrics.visibleCount(width: width, frameWidth: 54, gap: 3, itemCount: 11)
-        XCTAssertEqual(visible, 9)
-        XCTAssertEqual(FilmstripMetrics.scrollOffset(progress: 0, itemCount: 11, visibleCount: visible), 0)
-        XCTAssertEqual(FilmstripMetrics.scrollOffset(progress: 0.5, itemCount: 11, visibleCount: visible), 1)
-        XCTAssertEqual(FilmstripMetrics.scrollOffset(progress: 1, itemCount: 11, visibleCount: visible), 2)
+        let frameWidth: CGFloat = 54
+        let gap: CGFloat = 3
+        let count = 11
+        let maxOffset = FilmstripMetrics.maxScrollOffset(width: width, itemCount: count, frameWidth: frameWidth, gap: gap)
+        XCTAssertEqual(maxOffset, 114, accuracy: 0.001)
+        XCTAssertEqual(FilmstripMetrics.scrollOffset(progress: 0, width: width, itemCount: count, frameWidth: frameWidth, gap: gap), 0, accuracy: 0.001)
+        XCTAssertEqual(FilmstripMetrics.scrollOffset(progress: 0.5, width: width, itemCount: count, frameWidth: frameWidth, gap: gap), 57, accuracy: 0.001)
+        XCTAssertEqual(FilmstripMetrics.scrollOffset(progress: 1, width: width, itemCount: count, frameWidth: frameWidth, gap: gap), 114, accuracy: 0.001)
 
-        XCTAssertEqual(FilmstripMetrics.selectedIndex(x: 0, width: width, itemCount: 11, visibleCount: visible, frameWidth: 54, gap: 3), 0)
-        XCTAssertEqual(FilmstripMetrics.selectedIndex(x: width, width: width, itemCount: 11, visibleCount: visible, frameWidth: 54, gap: 3), 10)
+        // Splitting pixel offset into whole frames + fractional translation must reconstruct the same offset.
+        for offset: CGFloat in [0, 0.5, 28.5, 56.9, 57, 57.1, 85.5, 113.9, 114] {
+            let first = FilmstripMetrics.firstVisibleIndex(scrollOffset: offset, frameWidth: frameWidth, gap: gap, itemCount: count)
+            let partial = FilmstripMetrics.partialFrameOffset(scrollOffset: offset, frameWidth: frameWidth, gap: gap)
+            XCTAssertEqual(CGFloat(first) * (frameWidth + gap) + partial, offset, accuracy: 0.001)
+            XCTAssertGreaterThanOrEqual(partial, 0)
+            XCTAssertLessThan(partial, frameWidth + gap)
+        }
+    }
 
-        let samples: [CGFloat] = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 510]
-        let indices = samples.map {
-            FilmstripMetrics.selectedIndex(x: $0, width: width, itemCount: 11, visibleCount: visible, frameWidth: 54, gap: 3)
+    func testFilmstripDraggingSelectsAllImagesInOrder() {
+        let width: CGFloat = 510
+        let frameWidth: CGFloat = 54
+        let gap: CGFloat = 3
+        let count = 11
+        let samples: [CGFloat] = stride(from: CGFloat(0), through: width, by: 10).map { $0 } + [width]
+        let indices = samples.map { x -> Int in
+            let progress = min(max(x / width, 0), 1)
+            let offset = FilmstripMetrics.scrollOffset(progress: progress, width: width, itemCount: count, frameWidth: frameWidth, gap: gap)
+            return FilmstripMetrics.selectedIndex(contentX: x + offset, itemCount: count, frameWidth: frameWidth, gap: gap)
         }
         XCTAssertEqual(indices.first, 0)
         XCTAssertEqual(indices.last, 10)
         XCTAssertEqual(indices, indices.sorted(), "Dragging from left to right must not move selection backwards")
+        XCTAssertEqual(Set(indices), Set(0...10), "A continuous drag must cross every image, not skip frames")
     }
 
 }
