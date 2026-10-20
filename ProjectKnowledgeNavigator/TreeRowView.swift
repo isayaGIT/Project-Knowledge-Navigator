@@ -27,11 +27,30 @@ enum ProjectTreeRowMetrics {
     }
 
     static func isInteractive(node: ProjectNode, point: CGPoint, size: CGSize) -> Bool {
-        guard !node.images.isEmpty else { return false }
-        let stripTop = titleLineCenter(for: node) + iconSize / 2 + filmstripSpacing
+        isInteractive(hasFilmstrip: !node.images.isEmpty, point: point, size: size)
+    }
+
+    static func isInteractive(hasFilmstrip: Bool, point: CGPoint, size: CGSize) -> Bool {
+        guard hasFilmstrip else { return false }
+        let groupHeight = iconSize + filmstripSpacing + filmstripHeight
+        let titleCenter = (filmstripRowHeight - groupHeight) / 2 + iconSize / 2
+        let stripTop = titleCenter + iconSize / 2 + filmstripSpacing
         let stripBottom = stripTop + filmstripHeight
         return point.x >= filmstripLeading && point.x <= size.width - rowTrailing
             && point.y >= stripTop && point.y <= stripBottom
+    }
+}
+
+/// Public TreeView gesture layer for the filmstrip; keeps media geometry in the host app.
+struct ProjectFilmstripGestureLayer: TreeGestureLayer {
+    let nodeIDsWithImages: Set<UUID>
+    let priority = 100
+
+    func claims(_ context: TreeGestureHitTestContext) -> Bool {
+        guard context.kind == .primaryPointer,
+              let nodeID = context.nodeID.base as? UUID,
+              nodeIDsWithImages.contains(nodeID) else { return false }
+        return ProjectTreeRowMetrics.isInteractive(hasFilmstrip: true, point: context.point, size: context.size)
     }
 }
 

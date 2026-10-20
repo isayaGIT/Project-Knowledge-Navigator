@@ -119,9 +119,7 @@ struct ProjectTreeSidebar: View {
                     onUndo: { isTreeEditingActive = false; store.undoTreeChange() },
                     onRedo: { isTreeEditingActive = false; store.redoTreeChange() },
                     onRowInteraction: { _ in isTreeEditingActive = true },
-                    interactiveHitTest: { item, point, size in
-                        ProjectTreeRowMetrics.isInteractive(node: item.value, point: point, size: size)
-                    },
+                    gestureLayers: [ProjectFilmstripGestureLayer(nodeIDsWithImages: store.manifest.root.imageNodeIDs)],
                     rowContent: { context in
                         ProjectTreeRow(context: context, mediaURL: { store.mediaURL(for: $0) })
                     }
@@ -151,6 +149,12 @@ struct ProjectTreeSidebar: View {
 }
 
 private extension ProjectNode {
+    var imageNodeIDs: Set<UUID> {
+        var result = images.isEmpty ? Set<UUID>() : [id]
+        for child in children { result.formUnion(child.imageNodeIDs) }
+        return result
+    }
+
     func containsNodeTitle(matching query: String) -> Bool {
         title.localizedCaseInsensitiveContains(query)
             || children.contains { $0.containsNodeTitle(matching: query) }
