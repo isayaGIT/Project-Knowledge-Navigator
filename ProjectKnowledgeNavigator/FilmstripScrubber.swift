@@ -49,7 +49,7 @@ enum FilmstripMetrics {
 struct FilmstripScrubber: View {
     let items: [NodeContent]
     var mediaURL: (NodeContent) -> URL = { URL(fileURLWithPath: $0.path) }
-    @State private var scrollProgress: CGFloat = 0
+    @State private var pointerProgress: CGFloat = 0
     @State private var isScrubbing = false
     private let frameWidth: CGFloat = 54
     private let frameGap: CGFloat = 3
@@ -58,9 +58,8 @@ struct FilmstripScrubber: View {
         GeometryReader { geometry in
             let width = geometry.size.width
             let count = items.count
-            let totalWidth = FilmstripMetrics.contentWidth(itemCount: count, frameWidth: frameWidth, gap: frameGap)
             let scrollOffset = FilmstripMetrics.scrollOffset(
-                progress: scrollProgress, width: width, itemCount: count,
+                progress: pointerProgress, width: width, itemCount: count,
                 frameWidth: frameWidth, gap: frameGap
             )
             let startIndex = FilmstripMetrics.firstVisibleIndex(
@@ -71,7 +70,7 @@ struct FilmstripScrubber: View {
             )
             // Include extra frames for the fractional scroll at either edge; the viewport clips them.
             let renderEndIndex = min(count, startIndex + visibleCount + 2)
-            let pointerX = scrollProgress * width
+            let pointerX = pointerProgress * width
             let current = FilmstripMetrics.selectedIndex(
                 contentX: pointerX + scrollOffset, itemCount: count,
                 frameWidth: frameWidth, gap: frameGap
@@ -99,13 +98,10 @@ struct FilmstripScrubber: View {
             .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .local)
                 .onChanged { value in
                     isScrubbing = true
-                    guard count > 0, width > 0, totalWidth > width else {
-                        scrollProgress = 0
-                        return
-                    }
+                    guard count > 0, width > 0 else { pointerProgress = 0; return }
                     // Like a scrollbar, the pointer position maps to the whole scroll range.
                     // Content then follows it in pixel space, without quantizing motion to frame steps.
-                    scrollProgress = min(max(value.location.x / width, 0), 1)
+                    pointerProgress = min(max(value.location.x / width, 0), 1)
                 }
                 .onEnded { _ in isScrubbing = false })
             .accessibilityElement()
