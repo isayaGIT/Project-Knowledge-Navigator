@@ -14,33 +14,39 @@ struct FilmstripScrubber: View {
             let width = geometry.size.width
             let count = items.count
             let current = min(max(selectedIndex, 0), max(0, count - 1))
-            // Fit every frame into the available width. Keep the original direct
-            // click-and-drag scrubbing gesture, but never truncate the collection.
-            let fittedFrameWidth = count > 0
-                ? min(frameWidth, max(24, (width - CGFloat(max(0, count - 1)) * frameGap) / CGFloat(count)))
-                : frameWidth
+            let visibleCount = max(1, Int(ceil(width / (frameWidth + frameGap))))
+            let startIndex = max(0, min(max(0, count - visibleCount), current - visibleCount / 2))
+            let endIndex = min(count, startIndex + visibleCount)
             ZStack(alignment: .leading) {
                 if count > 0 {
                     HStack(spacing: frameGap) {
-                        ForEach(items.indices, id: \.self) { index in
+                        ForEach(startIndex..<endIndex, id: \.self) { index in
                             thumbnail(for: items[index], index: index, selected: index == current)
-                                .frame(width: fittedFrameWidth, height: geometry.size.height - 6)
+                                .frame(width: frameWidth, height: geometry.size.height - 6)
                         }
                     }
-                    .frame(height: geometry.size.height, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(height: geometry.size.height, alignment: .leading)
                 }
-                RoundedRectangle(cornerRadius: 6).stroke(isScrubbing ? Color.accentColor : Color.primary.opacity(0.10), lineWidth: isScrubbing ? 2 : 1).allowsHitTesting(false)
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(isScrubbing ? Color.accentColor : Color.primary.opacity(0.10), lineWidth: isScrubbing ? 2 : 1)
+                    .allowsHitTesting(false)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 6)).contentShape(Rectangle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .local)
                 .onChanged { value in
                     isScrubbing = true
-                    guard count > 1, width > 0 else { selectedIndex = 0; return }
+                    guard count > 1, width > 0, endIndex > startIndex else { selectedIndex = 0; return }
+                    // Map the pointer to the frames currently shown. When dragging reaches
+                    // an edge, the window follows the selection so every image is reachable.
                     let normalized = min(max(value.location.x / width, 0), 1)
-                    selectedIndex = Int((normalized * CGFloat(count - 1)).rounded())
+                    let visibleIndex = startIndex + Int((normalized * CGFloat(max(0, endIndex - startIndex - 1))).rounded())
+                    selectedIndex = min(max(visibleIndex, 0), count - 1)
                 }
                 .onEnded { _ in isScrubbing = false })
-            .accessibilityElement().accessibilityLabel("Image filmstrip")
+            .accessibilityElement()
+            .accessibilityLabel("Image filmstrip")
             .accessibilityValue("Image \(current + 1) of \(max(count, 1))")
             .help("Click or drag directly across the filmstrip to scrub through all images")
         }
