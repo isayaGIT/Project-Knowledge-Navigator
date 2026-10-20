@@ -165,34 +165,47 @@ final class ProjectStore: ObservableObject {
         return newNode.id
     }
 
-    /// Deletes selected node subtrees, excluding the project root. Files owned by removed content are cleaned up too.
+    /// Deletes selected node subtrees in one tree pass. Disk cleanup and persistence run off the UI thread.
     @discardableResult func deleteNodes(ids: [UUID]) -> Int {
         let requested = Set(ids).subtracting([manifest.root.id])
         guard !requested.isEmpty else { return 0 }
-        let topLevelIDs = requested.filter { id in
-            !requested.contains { other in other != id && manifest.root.node(id: other)?.node(id: id) != nil }
-        }
-        var updatedRoot = manifest.root
+
         var deletedCount = 0
         var removedContent: [NodeContent] = []
-        for id in topLevelIDs {
-            guard let removed = updatedRoot.removeNode(id: id) else { continue }
-            func collect(_ node: ProjectNode) {
-                deletedCount += 1
-                removedContent.append(contentsOf: node.content)
-                node.children.forEach(collect)
+
+        func collect(_ node: ProjectNode) {
+            deletedCount += 1
+            removedContent.append(contentsOf: node.content)
+            node.children.forEach(collect)
+        }
+
+        func removeRequestedSubtrees(from node: inout ProjectNode) {
+            var keptChildren: [ProjectNode] = []
+            keptChildren.reserveCapacity(node.children.count)
+            for var child in node.children {
+                if requested.contains(child.id) {
+                    collect(child)
+                } else {
+                    removeRequestedSubtrees(from: &child)
+                    keptChildren.append(child)
+                }
             }
-            collect(removed)
+            node.children = keptChildren
         }
+
+        var updatedRoot = manifest.root
+        removeRequestedSubtrees(from: &updatedRoot)
         guard deletedCount > 0 else { return 0 }
+
         manifest.root = updatedRoot
-        for item in removedContent where !item.path.hasPrefix("http://") && !item.path.hasPrefix("https://") {
-            try? FileManager.default.removeItem(at: mediaURL(for: item))
-        }
         selectedNodeID = manifest.root.id
         manifest.selectedNodeID = manifest.root.id
         expandedNodeIDs.insert(manifest.root.id)
-        save()
+
+        let cleanupURLs = removedContent
+            .filter { !$0.path.hasPrefix("http://") && !$0.path.hasPrefix("https://") }
+            .map { mediaURL(for: $0) }
+        saveMovedTreeAsynchronously(cleanupURLs: cleanupURLs)
         return deletedCount
     }
 
@@ -351,10 +364,9 @@ final class ProjectStore: ObservableObject {
     }
 
     /// Capture immutable value snapshots on the main actor, then encode and write them
-    /// off the main thread. Previously `moveNode -> save()` serialized JSON, performed
-    /// atomic disk writes, and reloaded WidgetKit timelines before the drop callback
-    /// returned, leaving SwiftUI's drag image and hover highlight visibly stuck.
-    private func saveMovedTreeAsynchronously() {
+    /// off the main thread. Tree mutations must not block interactive UI callbacks on
+    /// serialization, disk writes, media cleanup, or WidgetKit timeline reloads.
+    private func saveMovedTreeAsynchronously(cleanupURLs: [URL] = []) {
         var manifestSnapshot = manifest
         manifestSnapshot.selectedNodeID = selectedNodeID
         let catalogSnapshot = ProjectCatalog(projects: projects, selectedProjectID: selectedProjectID)
@@ -370,6 +382,9 @@ final class ProjectStore: ObservableObject {
         let widgetNodeIDs = widgetNodes.map { $0.id.uuidString }
 
         persistenceQueue.async {
+            for url in cleanupURLs {
+                try? FileManager.default.removeItem(at: url)
+            }
             do {
                 try FileManager.default.createDirectory(at: projectsDirectorySnapshot, withIntermediateDirectories: true)
                 let manifestEncoder = JSONEncoder()
@@ -394,7 +409,7 @@ final class ProjectStore: ObservableObject {
                     }
                 }
             } catch {
-                NSLog("Project Knowledge Navigator: could not persist a node move: %@", error.localizedDescription)
+                NSLog("Project Knowledge Navigator: could not persist a tree change: %@", error.localizedDescription)
             }
         }
     }
