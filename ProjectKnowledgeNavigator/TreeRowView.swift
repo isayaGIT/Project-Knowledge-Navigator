@@ -107,7 +107,14 @@ struct ProjectTreeRow: View {
             }
         }
         .onChange(of: titleFieldFocused) { wasFocused, isFocused in
-            guard wasFocused, !isFocused else { return }
+            guard wasFocused, !isFocused, context.isEditing else { return }
+            if !context.shouldFinishEditingOnFocusLoss() {
+                // A click on this same row should keep the temporary node in edit mode.
+                DispatchQueue.main.async {
+                    if context.isEditing && !didFinishEditing { titleFieldFocused = true }
+                }
+                return
+            }
             finishEditingIfNeeded()
         }
         .onChange(of: node.id) { _, _ in editingTitle = node.title }
