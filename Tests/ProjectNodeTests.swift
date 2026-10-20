@@ -185,6 +185,33 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertEqual(store.selectedNodeID, createdID)
     }
 
+    func testDeleteNodesRemovesWholeSubtreeAndDeduplicatesSelectedDescendants() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let rootID = store.manifest.root.id
+        let rooms = try XCTUnwrap(store.manifest.root.children.first(where: { $0.title == "Rooms" }))
+        let furniture = try XCTUnwrap(store.manifest.root.node(id: rooms.id)?.children.first?.children.first)
+        let deleted = store.deleteNodes(ids: [rooms.id, furniture.id])
+
+        XCTAssertEqual(deleted, 6)
+        XCTAssertNil(store.manifest.root.node(id: rooms.id))
+        XCTAssertNotNil(store.manifest.root.node(id: rootID))
+        XCTAssertEqual(store.manifest.root.children.map(\.title), ["Character", "Interaction"])
+        XCTAssertEqual(store.selectedNodeID, rootID)
+    }
+
+    func testDeleteNodesNeverDeletesProjectRoot() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let rootID = store.manifest.root.id
+        let originalChildren = store.manifest.root.children.map(\.id)
+
+        XCTAssertEqual(store.deleteNodes(ids: [rootID]), 0)
+        XCTAssertEqual(store.manifest.root.children.map(\.id), originalChildren)
+    }
+
     func testSelectedNodePersistsAsynchronouslyAcrossRelaunch() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }

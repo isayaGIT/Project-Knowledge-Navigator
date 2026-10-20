@@ -165,6 +165,37 @@ final class ProjectStore: ObservableObject {
         return newNode.id
     }
 
+    /// Deletes selected node subtrees, excluding the project root. Files owned by removed content are cleaned up too.
+    @discardableResult func deleteNodes(ids: [UUID]) -> Int {
+        let requested = Set(ids).subtracting([manifest.root.id])
+        guard !requested.isEmpty else { return 0 }
+        let topLevelIDs = requested.filter { id in
+            !requested.contains { other in other != id && manifest.root.node(id: other)?.node(id: id) != nil }
+        }
+        var updatedRoot = manifest.root
+        var deletedCount = 0
+        var removedContent: [NodeContent] = []
+        for id in topLevelIDs {
+            guard let removed = updatedRoot.removeNode(id: id) else { continue }
+            func collect(_ node: ProjectNode) {
+                deletedCount += 1
+                removedContent.append(contentsOf: node.content)
+                node.children.forEach(collect)
+            }
+            collect(removed)
+        }
+        guard deletedCount > 0 else { return 0 }
+        manifest.root = updatedRoot
+        for item in removedContent where !item.path.hasPrefix("http://") && !item.path.hasPrefix("https://") {
+            try? FileManager.default.removeItem(at: mediaURL(for: item))
+        }
+        selectedNodeID = manifest.root.id
+        manifest.selectedNodeID = manifest.root.id
+        expandedNodeIDs.insert(manifest.root.id)
+        save()
+        return deletedCount
+    }
+
     @discardableResult func moveNode(id nodeID: UUID, to targetID: UUID, placement: NodeMovePlacement) -> Bool {
         var root = manifest.root
         guard root.moveNode(id: nodeID, to: targetID, placement: placement) else { return false }

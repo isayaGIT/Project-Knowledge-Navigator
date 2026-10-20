@@ -19,6 +19,7 @@ struct ProjectTreeSidebar: View {
     let onCreateProject: () -> Void
     @State private var searchText = ""
     @State private var editingNodeID: UUID?
+    @State private var selectedNodeIDs: Set<UUID> = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -75,6 +76,7 @@ struct ProjectTreeSidebar: View {
                         set: { store.expandedNodeIDs = $0 }
                     ),
                     editingID: $editingNodeID,
+                    selectedIDs: $selectedNodeIDs,
                     searchText: searchText,
                     rowHeight: { item, _ in ProjectTreeRowMetrics.rowHeight(for: item.value) },
                     disclosureCenterOffset: { item, _ in ProjectTreeRowMetrics.titleLineCenter(for: item.value) },
@@ -90,6 +92,21 @@ struct ProjectTreeSidebar: View {
                     onRename: { id, title in
                         guard let node = store.manifest.root.node(id: id) else { return }
                         store.rename(node, to: title)
+                    },
+                    contentCount: { $0.value.content.count },
+                    onDelete: { ids in
+                        isTreeEditingActive = false
+                        _ = store.deleteNodes(ids: ids)
+                        selectedNodeIDs = []
+                        editingNodeID = nil
+                    },
+                    onIndent: { ids in
+                        isTreeEditingActive = false
+                        ids.forEach { _ = store.indentNode(id: $0) }
+                    },
+                    onOutdent: { ids in
+                        isTreeEditingActive = false
+                        ids.forEach { _ = store.outdentNode(id: $0) }
                     },
                     onRowInteraction: { _ in isTreeEditingActive = true },
                     interactiveHitTest: { item, point, size in
@@ -109,14 +126,6 @@ struct ProjectTreeSidebar: View {
                         .allowsHitTesting(false)
                 }
             }
-            .background {
-                TreeTabKeyMonitor(isActive: isTreeEditingActive) { shiftHeld in
-                    guard let id = store.selectedNodeID else { return }
-                    if shiftHeld { _ = store.outdentNode(id: id) }
-                    else { _ = store.indentNode(id: id) }
-                }
-                .frame(width: 0, height: 0)
-            }
         }
         .frame(minWidth: 270)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -135,55 +144,5 @@ private extension ProjectNode {
     func containsNodeTitle(matching query: String) -> Bool {
         title.localizedCaseInsensitiveContains(query)
             || children.contains { $0.containsNodeTitle(matching: query) }
-    }
-}
-
-private struct TreeTabKeyMonitor: NSViewRepresentable {
-    let isActive: Bool
-    let onTab: (Bool) -> Void
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView(frame: .zero)
-        context.coordinator.update(isActive: isActive, onTab: onTab)
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        context.coordinator.update(isActive: isActive, onTab: onTab)
-    }
-
-    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
-        coordinator.stop()
-    }
-
-    final class Coordinator {
-        private var monitor: Any?
-        private var isActive = false
-        private var onTab: (Bool) -> Void = { _ in }
-
-        func update(isActive: Bool, onTab: @escaping (Bool) -> Void) {
-            self.isActive = isActive
-            self.onTab = onTab
-            guard monitor == nil else { return }
-            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-                guard let self, self.isActive, event.keyCode == 48,
-                      event.window === NSApp.keyWindow else { return event }
-                // Activation is owned by tree-row clicks and is explicitly cleared
-                // when the user clicks the search field or detail pane. Do not infer
-                // ownership from firstResponder: SwiftUI can leave a stale text-field
-                // responder behind after the user has clicked a non-focusable row.
-                self.onTab(event.modifierFlags.contains(.shift))
-                return nil
-            }
-        }
-
-        func stop() {
-            if let monitor { NSEvent.removeMonitor(monitor) }
-            monitor = nil
-        }
-
-        deinit { stop() }
     }
 }

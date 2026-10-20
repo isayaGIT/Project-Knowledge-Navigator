@@ -76,7 +76,7 @@ struct ProjectNode: Identifiable, Codable, Equatable {
         return moveNode(id: target, to: parent, placement: .after)
     }
 
-    private mutating func removeNode(id target: UUID) -> ProjectNode? {
+    mutating func removeNode(id target: UUID) -> ProjectNode? {
         for index in children.indices {
             if children[index].id == target { return children.remove(at: index) }
             if let removed = children[index].removeNode(id: target) { return removed }
