@@ -7,14 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1AA3D38F792545A8E49ECE49 /* ProjectTreeSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51530C1F96FE5BCFF424B184 /* ProjectTreeSidebar.swift */; };
+		1FE3C1D5004C45CA9AF04D00 /* CrossProjectComponents in Frameworks */ = {isa = PBXBuildFile; productRef = 2D26B3E5C77752BE8CDE9F7C /* CrossProjectComponents */; };
 		2ED26BAF555A19452ACE9348 /* ProjectKnowledgeWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D7026918265EEC181C799042 /* ProjectKnowledgeWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		7B302C181BE17EFB5B35540F /* ProjectStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389653CBAD607EEFE33C4BCA /* ProjectStore.swift */; };
 		891F68C664FBC61E78D0508B /* FilmstripScrubber.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE35186F221BF6D676A9AA1 /* FilmstripScrubber.swift */; };
+		8EC8BD517CFF2D4EE4AB49E7 /* TreeRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C96E13DEA049F1654D4998A /* TreeRowView.swift */; };
 		D30E0E04981AAF070716CC6F /* ProjectKnowledgeNavigatorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEDE7BEA9D7AFA8B2D6B08C7 /* ProjectKnowledgeNavigatorApp.swift */; };
 		D73A0272F9DB726289C591E7 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B541B97F22FC1AF8D629BE73 /* ContentView.swift */; };
+		E97DEDFD14BD822AF5061AD8 /* ProjectDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34AFF3754E8D9A335803C81B /* ProjectDetailView.swift */; };
+		EA57C15D3FDD7922EF0EC194 /* NativeOutlineLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E84A7A171D6087A9690E640 /* NativeOutlineLayoutTests.swift */; };
 		EE477B67C5CFE724B94D68B3 /* ProjectKnowledgeWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9B8E6562F6F66B135350D91 /* ProjectKnowledgeWidget.swift */; };
 		F23A21A11523A00457AAF5DE /* ProjectNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92C6AA5D0786699C75BE10C1 /* ProjectNode.swift */; };
 		FADF604AAAFA7469761F612F /* ProjectNodeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1C57D41629A1FEED87812E /* ProjectNodeTests.swift */; };
+		FCA359A1185981172C74F95A /* ProjectLayoutMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FDB9EF0EE509D63A735D1B6 /* ProjectLayoutMetrics.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,8 +56,13 @@
 
 /* Begin PBXFileReference section */
 		1505D6755A1647DE1F23824E /* ProjectKnowledgeNavigator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ProjectKnowledgeNavigator.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		34AFF3754E8D9A335803C81B /* ProjectDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectDetailView.swift; sourceTree = "<group>"; };
 		389653CBAD607EEFE33C4BCA /* ProjectStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectStore.swift; sourceTree = "<group>"; };
 		3E9F862D4DFEB3111B6F36D5 /* ProjectKnowledgeWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ProjectKnowledgeWidget.entitlements; sourceTree = "<group>"; };
+		51530C1F96FE5BCFF424B184 /* ProjectTreeSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectTreeSidebar.swift; sourceTree = "<group>"; };
+		5E84A7A171D6087A9690E640 /* NativeOutlineLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeOutlineLayoutTests.swift; sourceTree = "<group>"; };
+		5FDB9EF0EE509D63A735D1B6 /* ProjectLayoutMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectLayoutMetrics.swift; sourceTree = "<group>"; };
+		6C96E13DEA049F1654D4998A /* TreeRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreeRowView.swift; sourceTree = "<group>"; };
 		7F1C57D41629A1FEED87812E /* ProjectNodeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectNodeTests.swift; sourceTree = "<group>"; };
 		92C6AA5D0786699C75BE10C1 /* ProjectNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectNode.swift; sourceTree = "<group>"; };
 		9D0654AB05FF340292B9AEEF /* ProjectKnowledgeNavigator.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ProjectKnowledgeNavigator.entitlements; sourceTree = "<group>"; };
@@ -60,10 +71,22 @@
 		BBD837BC468333019872B11E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C9B8E6562F6F66B135350D91 /* ProjectKnowledgeWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectKnowledgeWidget.swift; sourceTree = "<group>"; };
 		CBE35186F221BF6D676A9AA1 /* FilmstripScrubber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmstripScrubber.swift; sourceTree = "<group>"; };
+		CF925B5E01D74B84C2B7ABF2 /* Cross-Project-Components */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "Cross-Project-Components"; path = "../../../Cross-Project-Components"; sourceTree = SOURCE_ROOT; };
 		D22D7D23CC932842BD61A642 /* ProjectKnowledgeNavigatorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ProjectKnowledgeNavigatorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D7026918265EEC181C799042 /* ProjectKnowledgeWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ProjectKnowledgeWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		FEDE7BEA9D7AFA8B2D6B08C7 /* ProjectKnowledgeNavigatorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectKnowledgeNavigatorApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		602FA694BDE7CFD998152C1D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1FE3C1D5004C45CA9AF04D00 /* CrossProjectComponents in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		1350FB6821CDA5AE85049D59 /* ProjectKnowledgeWidget */ = {
@@ -82,10 +105,14 @@
 				B541B97F22FC1AF8D629BE73 /* ContentView.swift */,
 				CBE35186F221BF6D676A9AA1 /* FilmstripScrubber.swift */,
 				A83E3EEB9F938A7D23814B70 /* Info.plist */,
+				34AFF3754E8D9A335803C81B /* ProjectDetailView.swift */,
 				9D0654AB05FF340292B9AEEF /* ProjectKnowledgeNavigator.entitlements */,
 				FEDE7BEA9D7AFA8B2D6B08C7 /* ProjectKnowledgeNavigatorApp.swift */,
+				5FDB9EF0EE509D63A735D1B6 /* ProjectLayoutMetrics.swift */,
 				92C6AA5D0786699C75BE10C1 /* ProjectNode.swift */,
 				389653CBAD607EEFE33C4BCA /* ProjectStore.swift */,
+				51530C1F96FE5BCFF424B184 /* ProjectTreeSidebar.swift */,
+				6C96E13DEA049F1654D4998A /* TreeRowView.swift */,
 			);
 			path = ProjectKnowledgeNavigator;
 			sourceTree = "<group>";
@@ -93,6 +120,7 @@
 		638842BA19A38C6CAC391421 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				5E84A7A171D6087A9690E640 /* NativeOutlineLayoutTests.swift */,
 				7F1C57D41629A1FEED87812E /* ProjectNodeTests.swift */,
 			);
 			path = Tests;
@@ -111,11 +139,20 @@
 		B09974A0775A3940BA91CE3E = {
 			isa = PBXGroup;
 			children = (
+				F03C45C772ABE38F12F08F5C /* Packages */,
 				25ACEDE2AD31010FAD9909E9 /* ProjectKnowledgeNavigator */,
 				1350FB6821CDA5AE85049D59 /* ProjectKnowledgeWidget */,
 				638842BA19A38C6CAC391421 /* Tests */,
 				92256A874E7B6C89B96931F5 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		F03C45C772ABE38F12F08F5C /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				CF925B5E01D74B84C2B7ABF2 /* Cross-Project-Components */,
+			);
+			name = Packages;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -161,6 +198,7 @@
 			buildConfigurationList = D40678000C6627F162C8946A /* Build configuration list for PBXNativeTarget "ProjectKnowledgeNavigator" */;
 			buildPhases = (
 				DDC2F6DCBAF777FB0D4BEF31 /* Sources */,
+				602FA694BDE7CFD998152C1D /* Frameworks */,
 				A7BD6141780F8BECF36F70B2 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -170,6 +208,7 @@
 			);
 			name = ProjectKnowledgeNavigator;
 			packageProductDependencies = (
+				2D26B3E5C77752BE8CDE9F7C /* CrossProjectComponents */,
 			);
 			productName = ProjectKnowledgeNavigator;
 			productReference = 1505D6755A1647DE1F23824E /* ProjectKnowledgeNavigator.app */;
@@ -195,6 +234,9 @@
 			);
 			mainGroup = B09974A0775A3940BA91CE3E;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				92EA848946A96AE1CB349AC5 /* XCLocalSwiftPackageReference "../../../Cross-Project-Components" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 92256A874E7B6C89B96931F5 /* Products */;
 			projectDirPath = "";
@@ -212,6 +254,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EA57C15D3FDD7922EF0EC194 /* NativeOutlineLayoutTests.swift in Sources */,
 				FADF604AAAFA7469761F612F /* ProjectNodeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -230,9 +273,13 @@
 			files = (
 				D73A0272F9DB726289C591E7 /* ContentView.swift in Sources */,
 				891F68C664FBC61E78D0508B /* FilmstripScrubber.swift in Sources */,
+				E97DEDFD14BD822AF5061AD8 /* ProjectDetailView.swift in Sources */,
 				D30E0E04981AAF070716CC6F /* ProjectKnowledgeNavigatorApp.swift in Sources */,
+				FCA359A1185981172C74F95A /* ProjectLayoutMetrics.swift in Sources */,
 				F23A21A11523A00457AAF5DE /* ProjectNode.swift in Sources */,
 				7B302C181BE17EFB5B35540F /* ProjectStore.swift in Sources */,
+				1AA3D38F792545A8E49ECE49 /* ProjectTreeSidebar.swift in Sources */,
+				8EC8BD517CFF2D4EE4AB49E7 /* TreeRowView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -529,6 +576,20 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		92EA848946A96AE1CB349AC5 /* XCLocalSwiftPackageReference "../../../Cross-Project-Components" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../../Cross-Project-Components";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2D26B3E5C77752BE8CDE9F7C /* CrossProjectComponents */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CrossProjectComponents;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 71712613BEC9EF82A024CF15 /* Project object */;
 }

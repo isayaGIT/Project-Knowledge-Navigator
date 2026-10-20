@@ -1,21 +1,26 @@
 # Architecture
 
-## Minimal shape
-- `ProjectNode`: stable identity, title, children, and content items; recursive nesting is not represented by fixed-depth fields.
-- `NodeContent`: typed references to editable Markdown/text, annotated images, links, audio, video, and arbitrary local files. Binary media stays in project-scoped files.
-- `ProjectStore`: owns local persistence and selected-project state; views do not write files independently.
-- `NodeTreeView`: renders hierarchy and routes actions to the store.
-- `FilmstripScrubber`: row-level view maps pointer position to an index across the entire image collection and renders a moving thumbnail window with no internal leading/trailing padding. No separate slider.
-- `Content workspace`: selected node content is indexed at left and edited/previewed at right by type; images expose their own annotation field and Markdown documents save in place.
+## Domain and persistence
+- `ProjectNode`: stable identity, title, recursive children, and content items. The model has no dependency on the component library.
+- `NodeContent`: typed references to Markdown/text, annotated images, links, audio, video, and arbitrary local files. Binary media stays in project-scoped files.
+- `ProjectStore`: owns local persistence, project selection, selected-node state, expanded IDs, and validated tree mutations.
 - `ProjectKnowledgeWidget`: compact, read-mostly project summary and shortcuts.
 
-## Storage decision
-Start with a versioned JSON manifest because it is transparent, inspectable, and sufficient for the initial model. Keep media in files referenced by relative path. If real usage later requires concurrent writes, complex querying, or very large node counts, move storage behind the same API to SQLite. Do not add a database before it solves a measured problem.
+## Shared Tree boundary
+- `Cross-Project-Components/Sources/CrossProjectComponents/TreeView.swift` exposes the generic API and `TreeNodeRepresentable` protocol; `TreeProjection.swift` owns stable wrappers, ancestor-preserving filtering, and placement proposals; `TreeViewController.swift` owns the AppKit outline lifecycle, controlled selection/expansion synchronization, and row-content hosting.
+- `ProjectTreeSidebar.swift`: app shell and adapter. It maps `ProjectNode` into `ProjectTreeItem`, binds selection and expanded IDs to `ProjectStore`, translates `TreeMovePlacement` to the app's `NodeMovePlacement`, rejects invalid moves through a non-mutating candidate-tree validation, and forwards accepted moves to the store.
+- `TreeRowView.swift`: app-owned visual content—folder/document glyphs, content count, image filmstrip, row height, disclosure alignment, and filmstrip-only pointer hit testing. These details stay out of the generic component.
+- The shared component owns interaction mechanics, not domain mutation or persistence. Its row builder accepts host-defined SwiftUI content; `searchableText` can differ from the visible title; `canMove` must be a pure legality check.
 
-## Interaction
-Normalize pointer x-position to the strip width and map it to `[0, imageCount - 1]`; drag updates continuously. The visible thumbnail window follows the selected index while retaining neighboring frames as context. Stable media IDs—not array offsets—identify persisted items.
+The app references the single local Swift Package at `../../../Cross-Project-Components`. `project.yml` is the source configuration for this dependency; regenerate the Xcode project with `LOGNAME=koripor USER=koripor xcodegen generate` in this environment when dependencies or source membership change.
+
+## Filmstrip
+The app and package still have separate `FilmstripScrubber` implementations. The Tree extraction intentionally leaves the app's tested media resolution and scrub behavior untouched; merging the two is a separate parity change that must prove visual and interaction compatibility first.
+
+## Storage decision
+Use versioned JSON manifests and project-scoped media files while they remain sufficient. Move storage behind the same store API to SQLite only if measured use requires concurrent writes, complex querying, or much larger node counts.
 
 ## Safety and scope
-- No network calls required for core use.
+- Core use requires no network calls.
 - Removing a node/media reference does not silently delete original files.
-- Avoid speculative abstractions and third-party runtime dependencies.
+- The shared Tree has no host-app model, storage, WidgetKit, or third-party runtime dependency.

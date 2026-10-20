@@ -24,6 +24,9 @@ final class ProjectStore: ObservableObject {
     private let rootDirectory: URL
     private let catalogURL: URL
     private let syncWidgetDefaults: Bool
+    /// Disk writes triggered by a tree drop must never block AppKit's drag-end event.
+    /// A serial queue preserves manifest/catalog write order across rapid consecutive moves.
+    private let persistenceQueue = DispatchQueue(label: "com.isayaGIT.ProjectKnowledgeNavigator.persistence", qos: .utility)
     private var projectsDirectory: URL { rootDirectory.appendingPathComponent("Projects", isDirectory: true) }
     var projectFilesDirectoryURL: URL {
         rootDirectory.appendingPathComponent("ProjectFiles", isDirectory: true).appendingPathComponent(manifest.projectID.uuidString, isDirectory: true)
@@ -66,13 +69,39 @@ final class ProjectStore: ObservableObject {
         syncWidgetSummary()
     }
 
-    func select(_ node: ProjectNode) { selectedNodeID = node.id; save() }
+    func select(_ node: ProjectNode) {
+        guard selectedNodeID != node.id || manifest.selectedNodeID != node.id else { return }
+        selectedNodeID = node.id
+        manifest.selectedNodeID = node.id
+        saveSelectedNodeAsynchronously()
+    }
+
+    /// Selection is frequent, lightweight UI state. Persist only its manifest snapshot
+    /// on the serial queue; never block a mouse-up on catalog writes or WidgetKit IPC.
+    private func saveSelectedNodeAsynchronously() {
+        var snapshot = manifest
+        snapshot.selectedNodeID = selectedNodeID
+        let url = manifestURL(for: snapshot.projectID)
+        let directory = projectsDirectory
+        persistenceQueue.async {
+            do {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                try encoder.encode(snapshot).write(to: url, options: .atomic)
+            } catch {
+                NSLog("Project Knowledge Navigator: could not persist node selection: %@", error.localizedDescription)
+            }
+        }
+    }
+
     func toggleExpanded(_ node: ProjectNode) {
         if expandedNodeIDs.contains(node.id) { expandedNodeIDs.remove(node.id) }
         else { expandedNodeIDs.insert(node.id) }
     }
 
     func createProject(named rawName: String) {
+        flushPendingPersistence()
         let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
         persistCurrent()
@@ -87,6 +116,7 @@ final class ProjectStore: ObservableObject {
     }
 
     func selectProject(_ id: UUID) {
+        flushPendingPersistence()
         guard id != selectedProjectID,
               let summary = projects.first(where: { $0.id == id }),
               let data = try? Data(contentsOf: manifestURL(for: summary.id)),
@@ -113,6 +143,54 @@ final class ProjectStore: ObservableObject {
         let child = ProjectNode(title: "New Node")
         _ = manifest.root.updateNode(id: parent) { $0.children.append(child) }
         expandedNodeIDs.insert(parent); selectedNodeID = child.id; save()
+    }
+
+    /// Inserts a new node immediately after the selected node. With no selection, or
+    /// when the project root itself is selected, appends a top-level child.
+    @discardableResult func addSibling(after nodeID: UUID?) -> UUID {
+        let newNode = ProjectNode(title: "")
+        if let nodeID, nodeID != manifest.root.id,
+           let parentID = manifest.root.parentID(of: nodeID) {
+            _ = manifest.root.updateNode(id: parentID) { parent in
+                guard let index = parent.children.firstIndex(where: { $0.id == nodeID }) else { return }
+                parent.children.insert(newNode, at: index + 1)
+            }
+            expandedNodeIDs.insert(parentID)
+        } else {
+            manifest.root.children.append(newNode)
+            expandedNodeIDs.insert(manifest.root.id)
+        }
+        selectedNodeID = newNode.id
+        save()
+        return newNode.id
+    }
+
+    @discardableResult func moveNode(id nodeID: UUID, to targetID: UUID, placement: NodeMovePlacement) -> Bool {
+        var root = manifest.root
+        guard root.moveNode(id: nodeID, to: targetID, placement: placement) else { return false }
+        manifest.root = root
+        if placement == .inside { expandedNodeIDs.insert(targetID) }
+        if let newParentID = root.parentID(of: nodeID) { expandedNodeIDs.insert(newParentID) }
+        saveMovedTreeAsynchronously()
+        return true
+    }
+
+    @discardableResult func indentNode(id nodeID: UUID) -> Bool {
+        var root = manifest.root
+        guard root.indentNode(id: nodeID) else { return false }
+        manifest.root = root
+        if let parentID = root.parentID(of: nodeID) { expandedNodeIDs.insert(parentID) }
+        save()
+        return true
+    }
+
+    @discardableResult func outdentNode(id nodeID: UUID) -> Bool {
+        var root = manifest.root
+        guard root.outdentNode(id: nodeID) else { return false }
+        manifest.root = root
+        if let parentID = root.parentID(of: nodeID) { expandedNodeIDs.insert(parentID) }
+        save()
+        return true
     }
 
     func rename(_ node: ProjectNode, to rawTitle: String) {
@@ -230,8 +308,64 @@ final class ProjectStore: ObservableObject {
     }
 
     func save() {
+        flushPendingPersistence()
         manifest.selectedNodeID = selectedNodeID
         persistCurrent(); persistCatalog(); syncWidgetSummary()
+    }
+
+    /// Waits for outstanding background tree-move writes before a synchronous save,
+    /// project switch, or persistence assertion in tests. It does not wait for UI work.
+    func flushPendingPersistence() {
+        persistenceQueue.sync {}
+    }
+
+    /// Capture immutable value snapshots on the main actor, then encode and write them
+    /// off the main thread. Previously `moveNode -> save()` serialized JSON, performed
+    /// atomic disk writes, and reloaded WidgetKit timelines before the drop callback
+    /// returned, leaving SwiftUI's drag image and hover highlight visibly stuck.
+    private func saveMovedTreeAsynchronously() {
+        var manifestSnapshot = manifest
+        manifestSnapshot.selectedNodeID = selectedNodeID
+        let catalogSnapshot = ProjectCatalog(projects: projects, selectedProjectID: selectedProjectID)
+        let manifestURLSnapshot = manifestURL(for: manifest.projectID)
+        let catalogURLSnapshot = catalogURL
+        let projectsDirectorySnapshot = projectsDirectory
+        let rootDirectorySnapshot = rootDirectory
+        let updateWidget = syncWidgetDefaults
+        let widgetName = manifestSnapshot.name
+        let widgetProjectID = manifestSnapshot.projectID.uuidString
+        let widgetNodes = Array(manifestSnapshot.root.children.prefix(3))
+        let widgetTitles = widgetNodes.map(\.title)
+        let widgetNodeIDs = widgetNodes.map { $0.id.uuidString }
+
+        persistenceQueue.async {
+            do {
+                try FileManager.default.createDirectory(at: projectsDirectorySnapshot, withIntermediateDirectories: true)
+                let manifestEncoder = JSONEncoder()
+                manifestEncoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                try manifestEncoder.encode(manifestSnapshot).write(to: manifestURLSnapshot, options: .atomic)
+
+                try FileManager.default.createDirectory(at: rootDirectorySnapshot, withIntermediateDirectories: true)
+                let catalogEncoder = JSONEncoder()
+                catalogEncoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                try catalogEncoder.encode(catalogSnapshot).write(to: catalogURLSnapshot, options: .atomic)
+
+                if updateWidget,
+                   let defaults = UserDefaults(suiteName: "group.com.isayaGIT.ProjectKnowledgeNavigator") {
+                    defaults.set(widgetName, forKey: "currentProjectName")
+                    defaults.set(widgetProjectID, forKey: "currentProjectID")
+                    defaults.set(widgetTitles, forKey: "currentProjectNodeTitles")
+                    defaults.set(widgetNodeIDs, forKey: "currentProjectNodeIDs")
+                    // WidgetKit's IPC/reload request is not part of the drop critical path
+                    // or persistence-queue barrier.
+                    DispatchQueue.global(qos: .utility).async {
+                        WidgetCenter.shared.reloadAllTimelines()
+                    }
+                }
+            } catch {
+                NSLog("Project Knowledge Navigator: could not persist a node move: %@", error.localizedDescription)
+            }
+        }
     }
 
     private func syncWidgetSummary() {

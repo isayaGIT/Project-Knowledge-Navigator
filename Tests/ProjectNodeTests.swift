@@ -32,6 +32,7 @@ final class ProjectNodeTests: XCTestCase {
         XCTAssertNil(item.annotation)
     }
 
+
     func testFilmstripVisibleFramesFitWithoutClippingTheLastFrame() {
         XCTAssertEqual(FilmstripMetrics.visibleCount(width: 510, frameWidth: 54, gap: 3, itemCount: 11), 9)
         XCTAssertEqual(FilmstripMetrics.visibleCount(width: 566, frameWidth: 54, gap: 3, itemCount: 100), 9)
@@ -126,5 +127,213 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertEqual(restored.manifest.name, "Research")
         XCTAssertEqual(restored.manifest.root.children.first?.title, "New Node")
         XCTAssertTrue(restored.projects.contains(where: { $0.name == "ZPing" }))
+    }
+
+    func testAddSiblingInsertsImmediatelyAfterSelectedNode() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let rootID = store.manifest.root.id
+        let siblings = store.manifest.root.children
+        let target = try XCTUnwrap(siblings.first(where: { $0.title == "Character" }))
+
+        let createdID = store.addSibling(after: target.id)
+
+        XCTAssertEqual(store.manifest.root.children.map(\.id), [siblings[0].id, target.id, createdID, siblings[2].id])
+        XCTAssertEqual(store.selectedNodeID, createdID)
+        XCTAssertTrue(store.expandedNodeIDs.contains(rootID))
+    }
+
+    func testAddSiblingAtNestedDepthPreservesItsParent() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let rooms = try XCTUnwrap(store.manifest.root.children.first(where: { $0.title == "Rooms" }))
+        let design = try XCTUnwrap(rooms.children.first(where: { $0.title == "Design" }))
+        let target = try XCTUnwrap(design.children.first(where: { $0.title == "Furniture" }))
+
+        let createdID = store.addSibling(after: target.id)
+
+        let updatedDesign = try XCTUnwrap(store.manifest.root.node(id: design.id))
+        XCTAssertEqual(updatedDesign.children.map(\.id), [target.id, createdID, design.children[1].id])
+        XCTAssertEqual(store.manifest.root.node(id: createdID)?.title, "")
+    }
+
+    func testAddSiblingWhenProjectRootIsSelectedAppendsTopLevelChild() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let rootID = store.manifest.root.id
+        let previousIDs = store.manifest.root.children.map(\.id)
+
+        let createdID = store.addSibling(after: rootID)
+
+        XCTAssertEqual(Array(store.manifest.root.children.dropLast()).map(\.id), previousIDs)
+        XCTAssertEqual(store.manifest.root.children.last?.id, createdID)
+    }
+
+    func testAddSiblingWithoutSelectionAppendsTopLevelNode() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let previousIDs = store.manifest.root.children.map(\.id)
+
+        let createdID = store.addSibling(after: nil)
+
+        XCTAssertEqual(Array(store.manifest.root.children.dropLast()).map(\.id), previousIDs)
+        XCTAssertEqual(store.manifest.root.children.last?.id, createdID)
+        XCTAssertEqual(store.selectedNodeID, createdID)
+    }
+
+    func testSelectedNodePersistsAsynchronouslyAcrossRelaunch() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let target = try XCTUnwrap(store.manifest.root.children.first(where: { $0.title == "Rooms" }))
+
+        store.select(target)
+        store.flushPendingPersistence()
+
+        let restored = ProjectStore(rootDirectory: directory)
+        XCTAssertEqual(restored.selectedNodeID, target.id)
+        XCTAssertEqual(restored.manifest.selectedNodeID, target.id)
+    }
+
+    func testRapidNodeMovesPersistTheLatestTreeOrder() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let root = store.manifest.root
+        let rooms = try XCTUnwrap(root.children.first(where: { $0.title == "Rooms" }))
+        let character = try XCTUnwrap(root.children.first(where: { $0.title == "Character" }))
+        let interaction = try XCTUnwrap(root.children.first(where: { $0.title == "Interaction" }))
+
+        XCTAssertTrue(store.moveNode(id: character.id, to: rooms.id, placement: .inside))
+        XCTAssertTrue(store.moveNode(id: interaction.id, to: rooms.id, placement: .before))
+        store.flushPendingPersistence()
+
+        let restored = ProjectStore(rootDirectory: directory)
+        XCTAssertEqual(restored.manifest.root.children.map(\.title), ["Interaction", "Rooms"])
+        XCTAssertEqual(restored.manifest.root.node(id: rooms.id)?.children.last?.id, character.id)
+    }
+
+    func testNodeReorganizationPersistsAcrossRelaunch() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let root = store.manifest.root
+        let rooms = try XCTUnwrap(root.children.first(where: { $0.title == "Rooms" }))
+        let character = try XCTUnwrap(root.children.first(where: { $0.title == "Character" }))
+
+        store.selectedNodeID = character.id
+        XCTAssertTrue(store.moveNode(id: character.id, to: rooms.id, placement: .inside))
+        store.flushPendingPersistence()
+        let restored = ProjectStore(rootDirectory: directory)
+        XCTAssertEqual(restored.manifest.root.node(id: rooms.id)?.children.last?.id, character.id)
+        XCTAssertEqual(restored.selectedNodeID, character.id)
+        XCTAssertTrue(restored.expandedNodeIDs.contains(rooms.id))
+    }
+}
+
+final class ProjectNodeMovementTests: XCTestCase {
+    private func makeTree() -> ProjectNode {
+        ProjectNode(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!, title: "Root", children: [
+            ProjectNode(id: UUID(uuidString: "00000000-0000-0000-0000-000000000010")!, title: "A", children: [
+                ProjectNode(id: UUID(uuidString: "00000000-0000-0000-0000-000000000011")!, title: "A1"),
+                ProjectNode(id: UUID(uuidString: "00000000-0000-0000-0000-000000000012")!, title: "A2")
+            ]),
+            ProjectNode(id: UUID(uuidString: "00000000-0000-0000-0000-000000000020")!, title: "B"),
+            ProjectNode(id: UUID(uuidString: "00000000-0000-0000-0000-000000000030")!, title: "C")
+        ])
+    }
+
+    func testDropInsideMovesWholeSubtreeAndPreservesIdentityAndContent() throws {
+        var tree = makeTree()
+        let movingID = UUID(uuidString: "00000000-0000-0000-0000-000000000010")!
+        let targetID = UUID(uuidString: "00000000-0000-0000-0000-000000000020")!
+        let note = NodeContent(kind: .markdown, title: "Keep", path: "Documents/keep.md")
+        tree.updateNode(id: movingID) { $0.content = [note] }
+
+        XCTAssertTrue(tree.moveNode(id: movingID, to: targetID, placement: .inside))
+        let moved = try XCTUnwrap(tree.node(id: movingID))
+        XCTAssertEqual(moved.content, [note])
+        XCTAssertNotNil(moved.node(id: UUID(uuidString: "00000000-0000-0000-0000-000000000011")!))
+        XCTAssertEqual(tree.node(id: targetID)?.children.map(\.id), [movingID])
+        XCTAssertEqual(tree.children.map(\.title), ["B", "C"])
+    }
+
+    func testDropBeforeAndAfterPreserveSiblingOrder() throws {
+        var tree = makeTree()
+        let b = UUID(uuidString: "00000000-0000-0000-0000-000000000020")!
+        let c = UUID(uuidString: "00000000-0000-0000-0000-000000000030")!
+        let a = UUID(uuidString: "00000000-0000-0000-0000-000000000010")!
+
+        XCTAssertTrue(tree.moveNode(id: c, to: b, placement: .before))
+        XCTAssertEqual(tree.children.map(\.title), ["A", "C", "B"])
+        XCTAssertTrue(tree.moveNode(id: b, to: a, placement: .after))
+        XCTAssertEqual(tree.children.map(\.title), ["A", "B", "C"])
+    }
+
+    func testIndentAndOutdentChangeOneLevel() throws {
+        var tree = makeTree()
+        let b = UUID(uuidString: "00000000-0000-0000-0000-000000000020")!
+        let a = UUID(uuidString: "00000000-0000-0000-0000-000000000010")!
+
+        XCTAssertTrue(tree.indentNode(id: b))
+        XCTAssertEqual(tree.node(id: a)?.children.map(\.id), [UUID(uuidString: "00000000-0000-0000-0000-000000000011")!, UUID(uuidString: "00000000-0000-0000-0000-000000000012")!, b])
+        XCTAssertTrue(tree.outdentNode(id: b))
+        XCTAssertEqual(tree.children.map(\.id), [a, b, UUID(uuidString: "00000000-0000-0000-0000-000000000030")!])
+    }
+
+    func testContentBearingNodeCanBeIndentedIntoAnotherContentBearingNode() throws {
+        var tree = makeTree()
+        let a = UUID(uuidString: "00000000-0000-0000-0000-000000000010")!
+        let b = UUID(uuidString: "00000000-0000-0000-0000-000000000020")!
+        let parentNote = NodeContent(kind: .markdown, title: "Parent note", path: "Documents/parent.md")
+        let childNote = NodeContent(kind: .markdown, title: "Child note", path: "Documents/child.md")
+        tree.updateNode(id: a) { $0.content = [parentNote] }
+        tree.updateNode(id: b) { $0.content = [childNote] }
+
+        XCTAssertTrue(tree.indentNode(id: b))
+        let parent = try XCTUnwrap(tree.node(id: a))
+        let child = try XCTUnwrap(parent.node(id: b))
+        XCTAssertEqual(parent.content, [parentNote])
+        XCTAssertEqual(child.content, [childNote])
+        XCTAssertEqual(parent.children.last?.id, b)
+    }
+
+    func testRejectRootMovesCyclesAndInvalidSiblingTarget() {
+        var tree = makeTree()
+        let root = tree.id
+        let a = UUID(uuidString: "00000000-0000-0000-0000-000000000010")!
+        let a1 = UUID(uuidString: "00000000-0000-0000-0000-000000000011")!
+        let original = tree
+
+        XCTAssertFalse(tree.moveNode(id: root, to: a, placement: .inside))
+        XCTAssertFalse(tree.moveNode(id: a, to: a1, placement: .inside))
+        XCTAssertFalse(tree.moveNode(id: a, to: root, placement: .before))
+        XCTAssertFalse(tree.indentNode(id: UUID(uuidString: "00000000-0000-0000-0000-000000000011")!))
+        XCTAssertFalse(tree.outdentNode(id: a))
+        XCTAssertEqual(tree, original)
+    }
+
+    func testMoveRelativeToNestedTargetUpdatesCorrectParent() {
+        var tree = makeTree()
+        let b = UUID(uuidString: "00000000-0000-0000-0000-000000000020")!
+        let a2 = UUID(uuidString: "00000000-0000-0000-0000-000000000012")!
+        let a = UUID(uuidString: "00000000-0000-0000-0000-000000000010")!
+
+        XCTAssertTrue(tree.moveNode(id: b, to: a2, placement: .after))
+        XCTAssertEqual(tree.children.map(\.title), ["A", "C"])
+        XCTAssertEqual(tree.node(id: a)?.children.map(\.id), [UUID(uuidString: "00000000-0000-0000-0000-000000000011")!, a2, b])
+    }
+
+    func testMoveRelativeToDescendantIsRejectedWithoutMutation() {
+        var tree = makeTree()
+        let a = UUID(uuidString: "00000000-0000-0000-0000-000000000010")!
+        let a1 = UUID(uuidString: "00000000-0000-0000-0000-000000000011")!
+        let original = tree
+        XCTAssertFalse(tree.moveNode(id: a, to: a1, placement: .after))
+        XCTAssertEqual(tree, original)
     }
 }

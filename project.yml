@@ -4,6 +4,9 @@ options:
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
+packages:
+  CrossProjectComponents:
+    path: ../../../Cross-Project-Components
 settings:
   base:
     SWIFT_VERSION: "5.10"
@@ -25,6 +28,8 @@ targets:
     dependencies:
       - target: ProjectKnowledgeWidget
         embed: true
+      - package: CrossProjectComponents
+        product: CrossProjectComponents
   ProjectKnowledgeWidget:
     type: app-extension
     platform: macOS
