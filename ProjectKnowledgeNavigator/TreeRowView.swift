@@ -42,6 +42,7 @@ struct ProjectTreeRow: View {
     let mediaURL: (NodeContent) -> URL
     @State private var editingTitle = ""
     @FocusState private var titleFieldFocused: Bool
+    @State private var didFinishEditing = false
 
     private var node: ProjectNode { context.node.value }
 
@@ -73,7 +74,7 @@ struct ProjectTreeRow: View {
                     .textFieldStyle(.plain)
                     .focused($titleFieldFocused)
                     .onSubmit {
-                        context.onCommitEditing(editingTitle)
+                        finishEditingIfNeeded()
                     }
             } else {
                 Text(node.title)
@@ -99,11 +100,22 @@ struct ProjectTreeRow: View {
         .onChange(of: context.isEditing) { _, isEditing in
             if isEditing {
                 editingTitle = node.title
+                didFinishEditing = false
                 titleFieldFocused = true
             } else {
                 titleFieldFocused = false
             }
         }
+        .onChange(of: titleFieldFocused) { wasFocused, isFocused in
+            guard wasFocused, !isFocused else { return }
+            finishEditingIfNeeded()
+        }
         .onChange(of: node.id) { _, _ in editingTitle = node.title }
+    }
+
+    private func finishEditingIfNeeded() {
+        guard context.isEditing, !didFinishEditing else { return }
+        didFinishEditing = true
+        context.onCommitEditing(editingTitle)
     }
 }
