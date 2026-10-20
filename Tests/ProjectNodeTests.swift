@@ -32,29 +32,33 @@ final class ProjectNodeTests: XCTestCase {
         XCTAssertNil(item.annotation)
     }
 
-    func testFilmstripWindowNeverAddsLeadingOrTrailingPadding() {
-        func offset(width: Double, frameWidth: Double, gap: Double, count: Int, selected: Int) -> Double {
-            let step = frameWidth + gap
-            let visible = max(1, Int(ceil(width / step)) + 2)
-            let start = max(0, min(max(0, count - visible), selected - visible / 2))
-            let total = Double(count) * frameWidth + Double(max(0, count - 1)) * gap
-            return total <= width ? 0 : -Double(start) * step
-        }
-        XCTAssertEqual(offset(width: 300, frameWidth: 54, gap: 3, count: 2, selected: 0), 0)
-        XCTAssertEqual(offset(width: 200, frameWidth: 54, gap: 3, count: 100, selected: 0), 0)
-        XCTAssertLessThan(offset(width: 200, frameWidth: 54, gap: 3, count: 100, selected: 99), 0)
+    func testFilmstripVisibleFramesFitWithoutClippingTheLastFrame() {
+        XCTAssertEqual(FilmstripMetrics.visibleCount(width: 510, frameWidth: 54, gap: 3, itemCount: 11), 9)
+        XCTAssertEqual(FilmstripMetrics.visibleCount(width: 566, frameWidth: 54, gap: 3, itemCount: 100), 9)
+        XCTAssertEqual(FilmstripMetrics.visibleCount(width: 567, frameWidth: 54, gap: 3, itemCount: 100), 10)
+        XCTAssertEqual(FilmstripMetrics.visibleCount(width: 510, frameWidth: 54, gap: 3, itemCount: 4), 4)
     }
 
-    func testPointerPositionMapsAcrossWholeFilmstrip() {
-        func index(x: Double, width: Double, count: Int) -> Int {
-            guard count > 1, width > 0 else { return 0 }
-            return Int((min(max(x / width, 0), 1) * Double(count - 1)).rounded())
+    func testFilmstripScrollRangeAndSelectionStayAlignedAcrossTheViewport() {
+        let width: CGFloat = 510
+        let visible = FilmstripMetrics.visibleCount(width: width, frameWidth: 54, gap: 3, itemCount: 11)
+        XCTAssertEqual(visible, 9)
+        XCTAssertEqual(FilmstripMetrics.scrollOffset(progress: 0, itemCount: 11, visibleCount: visible), 0)
+        XCTAssertEqual(FilmstripMetrics.scrollOffset(progress: 0.5, itemCount: 11, visibleCount: visible), 1)
+        XCTAssertEqual(FilmstripMetrics.scrollOffset(progress: 1, itemCount: 11, visibleCount: visible), 2)
+
+        XCTAssertEqual(FilmstripMetrics.selectedIndex(x: 0, width: width, itemCount: 11, visibleCount: visible, frameWidth: 54, gap: 3), 0)
+        XCTAssertEqual(FilmstripMetrics.selectedIndex(x: width, width: width, itemCount: 11, visibleCount: visible, frameWidth: 54, gap: 3), 10)
+
+        let samples: [CGFloat] = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 510]
+        let indices = samples.map {
+            FilmstripMetrics.selectedIndex(x: $0, width: width, itemCount: 11, visibleCount: visible, frameWidth: 54, gap: 3)
         }
-        XCTAssertEqual(index(x: 0, width: 100, count: 12), 0)
-        XCTAssertEqual(index(x: 50, width: 100, count: 12), 6)
-        XCTAssertEqual(index(x: 100, width: 100, count: 12), 11)
-        XCTAssertEqual(index(x: 200, width: 100, count: 12), 11)
+        XCTAssertEqual(indices.first, 0)
+        XCTAssertEqual(indices.last, 10)
+        XCTAssertEqual(indices, indices.sorted(), "Dragging from left to right must not move selection backwards")
     }
+
 }
 
 @MainActor
