@@ -14,20 +14,20 @@ struct FilmstripScrubber: View {
             let width = geometry.size.width
             let count = items.count
             let current = min(max(selectedIndex, 0), max(0, count - 1))
-            let visibleCount = max(1, Int(ceil(width / (frameWidth + frameGap))) + 2)
-            let startIndex = max(0, min(max(0, count - visibleCount), current - visibleCount / 2))
-            let endIndex = min(count, startIndex + visibleCount)
+            // Fit every frame into the available width. Keep the original direct
+            // click-and-drag scrubbing gesture, but never truncate the collection.
+            let fittedFrameWidth = count > 0
+                ? min(frameWidth, max(24, (width - CGFloat(max(0, count - 1)) * frameGap) / CGFloat(count)))
+                : frameWidth
             ZStack(alignment: .leading) {
                 if count > 0 {
                     HStack(spacing: frameGap) {
-                        ForEach(startIndex..<endIndex, id: \.self) { index in
+                        ForEach(items.indices, id: \.self) { index in
                             thumbnail(for: items[index], index: index, selected: index == current)
-                                .frame(width: frameWidth, height: geometry.size.height - 6)
+                                .frame(width: fittedFrameWidth, height: geometry.size.height - 6)
                         }
                     }
-                    // The HStack already contains only the visible slice. Do not offset it
-                    // by startIndex again, or the final frames shift left and leave a blank tail.
-                    .frame(height: geometry.size.height, alignment: .leading)
+                    .frame(height: geometry.size.height, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading)
                 }
                 RoundedRectangle(cornerRadius: 6).stroke(isScrubbing ? Color.accentColor : Color.primary.opacity(0.10), lineWidth: isScrubbing ? 2 : 1).allowsHitTesting(false)
             }
