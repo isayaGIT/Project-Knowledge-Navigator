@@ -1,38 +1,48 @@
 import SwiftUI
 
-/// A genuinely scrollable filmstrip: every image gets a frame, including images beyond the visible viewport.
-/// Horizontal scrolling reveals the remaining frames; tapping a frame marks it as selected.
+/// The filmstrip is the seek control. Click or drag directly on the frames to scrub the full collection.
 struct FilmstripScrubber: View {
     let items: [NodeContent]
     var mediaURL: (NodeContent) -> URL = { URL(fileURLWithPath: $0.path) }
     @State private var selectedIndex = 0
+    @State private var isScrubbing = false
     private let frameWidth: CGFloat = 54
     private let frameGap: CGFloat = 3
 
     var body: some View {
         GeometryReader { geometry in
-            ScrollView(.horizontal) {
-                LazyHStack(spacing: frameGap) {
-                    ForEach(items.indices, id: \.self) { index in
-                        thumbnail(for: items[index], index: index, selected: index == selectedIndex)
-                            .frame(width: frameWidth, height: max(1, geometry.size.height - 6))
-                            .contentShape(RoundedRectangle(cornerRadius: 4))
-                            .onTapGesture { selectedIndex = index }
-                            .accessibilityAddTraits(index == selectedIndex ? .isSelected : [])
+            let width = geometry.size.width
+            let count = items.count
+            let current = min(max(selectedIndex, 0), max(0, count - 1))
+            let visibleCount = max(1, Int(ceil(width / (frameWidth + frameGap))) + 2)
+            let startIndex = max(0, min(max(0, count - visibleCount), current - visibleCount / 2))
+            let endIndex = min(count, startIndex + visibleCount)
+            ZStack(alignment: .leading) {
+                if count > 0 {
+                    HStack(spacing: frameGap) {
+                        ForEach(startIndex..<endIndex, id: \.self) { index in
+                            thumbnail(for: items[index], index: index, selected: index == current)
+                                .frame(width: frameWidth, height: geometry.size.height - 6)
+                        }
                     }
+                    // The HStack already contains only the visible slice. Do not offset it
+                    // by startIndex again, or the final frames shift left and leave a blank tail.
+                    .frame(height: geometry.size.height, alignment: .leading)
                 }
-                .padding(.horizontal, 2)
+                RoundedRectangle(cornerRadius: 6).stroke(isScrubbing ? Color.accentColor : Color.primary.opacity(0.10), lineWidth: isScrubbing ? 2 : 1).allowsHitTesting(false)
             }
-            .scrollIndicators(.hidden)
-            .overlay {
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color.primary.opacity(0.10), lineWidth: 1)
-                    .allowsHitTesting(false)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Image filmstrip")
-            .help("Scroll horizontally to access every image; click a frame to select it")
+            .clipShape(RoundedRectangle(cornerRadius: 6)).contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                .onChanged { value in
+                    isScrubbing = true
+                    guard count > 1, width > 0 else { selectedIndex = 0; return }
+                    let normalized = min(max(value.location.x / width, 0), 1)
+                    selectedIndex = Int((normalized * CGFloat(count - 1)).rounded())
+                }
+                .onEnded { _ in isScrubbing = false })
+            .accessibilityElement().accessibilityLabel("Image filmstrip")
+            .accessibilityValue("Image \(current + 1) of \(max(count, 1))")
+            .help("Click or drag directly across the filmstrip to scrub through all images")
         }
     }
 
@@ -50,6 +60,7 @@ struct FilmstripScrubber: View {
         .overlay(alignment: .bottomLeading) {
             Text("\(index + 1)").font(.system(size: 8, weight: .semibold, design: .rounded)).foregroundStyle(.black.opacity(0.65)).padding(3)
         }
-        .accessibilityLabel("\(index + 1): \(item.title)")
+        .accessibilityLabel(item.title)
     }
+
 }
