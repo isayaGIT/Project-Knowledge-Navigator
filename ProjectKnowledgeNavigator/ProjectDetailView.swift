@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import AppKit
+import CrossProjectComponents
 
 /// Owns the selected node's content presentation, editors, and content-related dialogs.
 struct ProjectDetailView: View {
@@ -21,6 +22,7 @@ struct ProjectDetailView: View {
     @State private var showAddLink = false
     @State private var linkTitle = ""
     @State private var linkURL = ""
+    @State private var embeddedBrowserURL: URL?
 
     var body: some View {
         detailView
@@ -278,9 +280,7 @@ struct ProjectDetailView: View {
                     Image(systemName: symbol(for: item.kind)).foregroundStyle(.secondary)
                     if item.kind != .markdown { Text(item.title).font(.headline).lineLimit(1) }
                     Spacer()
-                    if item.kind == .link {
-                        Button("Open Link") { if let url = URL(string: item.path) { NSWorkspace.shared.open(url) } }
-                    } else if item.kind == .file || item.kind == .audio || item.kind == .video {
+                    if item.kind == .file || item.kind == .audio || item.kind == .video {
                         Button("Open File") { NSWorkspace.shared.open(store.mediaURL(for: item)) }
                     }
                 }
@@ -318,7 +318,22 @@ struct ProjectDetailView: View {
                     }
                     .frame(maxHeight: .infinity)
                 case .link:
-                    ContentUnavailableView(item.path, systemImage: "link", description: Text("External link attached to this node."))
+                    if let initialURL = webURL(for: item) {
+                        EmbeddedBrowserView(
+                            url: Binding(
+                                get: { embeddedBrowserURL ?? initialURL },
+                                set: { embeddedBrowserURL = $0 }
+                            ),
+                            configuration: EmbeddedBrowserConfiguration(
+                                showsNavigationControls: true,
+                                showsAddressField: false
+                            )
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    } else {
+                        ContentUnavailableView(item.title, systemImage: "link", description: Text("This link is not a valid HTTP or HTTPS address."))
+                    }
                 case .audio:
                     ContentUnavailableView(item.title, systemImage: "waveform", description: Text("Open the audio file in your preferred player."))
                 case .video:
@@ -368,6 +383,16 @@ struct ProjectDetailView: View {
             isEditingMarkdown = false
         }
         if item.kind == .image { imageAnnotation = item.annotation ?? "" }
+        if item.kind == .link { embeddedBrowserURL = webURL(for: item) }
+    }
+
+    private func webURL(for item: NodeContent) -> URL? {
+        guard item.kind == .link,
+              let components = URLComponents(string: item.path),
+              let scheme = components.scheme?.lowercased(),
+              ["http", "https"].contains(scheme),
+              components.host != nil else { return nil }
+        return components.url
     }
     private func selectedItem(in node: ProjectNode) -> NodeContent? {
         if let id = selectedContentID, let item = node.content.first(where: { $0.id == id }) { return item }
