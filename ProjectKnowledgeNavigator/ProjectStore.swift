@@ -13,6 +13,25 @@ private struct ProjectCatalog: Codable {
     var selectedProjectID: UUID
 }
 
+private struct ProjectTreeUndoSnapshot: Equatable {
+    var manifest: ProjectManifest
+    var projects: [ProjectSummary]
+    var selectedProjectID: UUID
+    var selectedNodeID: UUID?
+    var expandedNodeIDs: Set<UUID>
+}
+
+private struct UndoFileBackup {
+    var sourceURL: URL
+    var backupURL: URL
+}
+
+private struct ProjectTreeUndoRecord {
+    var before: ProjectTreeUndoSnapshot
+    var after: ProjectTreeUndoSnapshot
+    var fileBackups: [UndoFileBackup]
+}
+
 @MainActor
 final class ProjectStore: ObservableObject {
     @Published private(set) var manifest: ProjectManifest
@@ -20,10 +39,18 @@ final class ProjectStore: ObservableObject {
     @Published private(set) var selectedProjectID: UUID
     @Published var selectedNodeID: UUID?
     @Published var expandedNodeIDs: Set<UUID>
+    @Published private(set) var canUndoTreeChange = false
+    @Published private(set) var canRedoTreeChange = false
 
     private let rootDirectory: URL
     private let catalogURL: URL
     private let syncWidgetDefaults: Bool
+    private let undoCacheDirectory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("ProjectKnowledgeNavigator-Undo-\(UUID().uuidString)", isDirectory: true)
+    private static let maximumTreeUndoLevels = 100
+    private var treeUndoStack: [ProjectTreeUndoRecord] = []
+    private var treeRedoStack: [ProjectTreeUndoRecord] = []
+    private var pendingNodeCreationSnapshots: [UUID: ProjectTreeUndoSnapshot] = [:]
     /// Disk writes triggered by a tree drop must never block AppKit's drag-end event.
     /// A serial queue preserves manifest/catalog write order across rapid consecutive moves.
     private let persistenceQueue = DispatchQueue(label: "com.isayaGIT.ProjectKnowledgeNavigator.persistence", qos: .utility)
@@ -69,6 +96,13 @@ final class ProjectStore: ObservableObject {
         syncWidgetSummary()
     }
 
+    deinit {
+        let queue = persistenceQueue
+        let cacheDirectory = undoCacheDirectory
+        queue.sync {}
+        try? FileManager.default.removeItem(at: cacheDirectory)
+    }
+
     func select(_ node: ProjectNode) {
         guard selectedNodeID != node.id || manifest.selectedNodeID != node.id else { return }
         selectedNodeID = node.id
@@ -104,6 +138,7 @@ final class ProjectStore: ObservableObject {
         flushPendingPersistence()
         let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
+        clearTreeUndoHistory()
         persistCurrent()
         let root = ProjectNode(title: name)
         let next = ProjectManifest(projectID: UUID(), name: name, root: root, selectedNodeID: root.id)
@@ -121,6 +156,7 @@ final class ProjectStore: ObservableObject {
               let summary = projects.first(where: { $0.id == id }),
               let data = try? Data(contentsOf: manifestURL(for: summary.id)),
               let next = try? JSONDecoder().decode(ProjectManifest.self, from: data) else { return }
+        clearTreeUndoHistory()
         persistCurrent()
         selectedProjectID = id
         manifest = next
@@ -139,15 +175,20 @@ final class ProjectStore: ObservableObject {
     }
 
     func addChild(to parentID: UUID?) {
+        let before = makeTreeUndoSnapshot()
         let parent = parentID ?? manifest.root.id
         let child = ProjectNode(title: "New Node")
         _ = manifest.root.updateNode(id: parent) { $0.children.append(child) }
-        expandedNodeIDs.insert(parent); selectedNodeID = child.id; save()
+        expandedNodeIDs.insert(parent)
+        selectedNodeID = child.id
+        recordTreeUndo(before: before)
+        save()
     }
 
     /// Inserts a new node immediately after the selected node. With no selection, or
     /// when the project root itself is selected, appends a top-level child.
     @discardableResult func addSibling(after nodeID: UUID?) -> UUID {
+        let before = makeTreeUndoSnapshot()
         let newNode = ProjectNode(title: "")
         if let nodeID, nodeID != manifest.root.id,
            let parentID = manifest.root.parentID(of: nodeID) {
@@ -161,6 +202,7 @@ final class ProjectStore: ObservableObject {
             expandedNodeIDs.insert(manifest.root.id)
         }
         selectedNodeID = newNode.id
+        pendingNodeCreationSnapshots[newNode.id] = before
         save()
         return newNode.id
     }
@@ -169,6 +211,11 @@ final class ProjectStore: ObservableObject {
     @discardableResult func deleteNodes(ids: [UUID]) -> Int {
         let requested = Set(ids).subtracting([manifest.root.id])
         guard !requested.isEmpty else { return 0 }
+        let cancelledProvisionalCreation = requested.count == 1
+            && requested.first.map { pendingNodeCreationSnapshots[$0] != nil } == true
+        let undoBefore = cancelledProvisionalCreation
+            ? requested.first.flatMap { pendingNodeCreationSnapshots[$0] } ?? makeTreeUndoSnapshot()
+            : makeTreeUndoSnapshot()
 
         var deletedCount = 0
         var removedContent: [NodeContent] = []
@@ -201,38 +248,70 @@ final class ProjectStore: ObservableObject {
         selectedNodeID = manifest.root.id
         manifest.selectedNodeID = manifest.root.id
         expandedNodeIDs.insert(manifest.root.id)
+        for id in requested { pendingNodeCreationSnapshots.removeValue(forKey: id) }
 
-        let cleanupURLs = removedContent
+        let remainingPaths = contentFilePaths(in: updatedRoot)
+        let removedURLs = removedContent
             .filter { !$0.path.hasPrefix("http://") && !$0.path.hasPrefix("https://") }
-            .map { mediaURL(for: $0) }
-        saveMovedTreeAsynchronously(cleanupURLs: cleanupURLs)
+            .map { mediaURL(for: $0).standardizedFileURL }
+        let uniqueRemovedURLs = Dictionary(grouping: removedURLs, by: \.path).compactMap { $0.value.first }
+            .filter { !remainingPaths.contains($0.path) }
+        let backups = makeUndoBackups(for: uniqueRemovedURLs)
+        if !cancelledProvisionalCreation {
+            recordTreeUndo(before: undoBefore, fileBackups: backups)
+        }
+        saveMovedTreeAsynchronously(deletingFiles: backups)
         return deletedCount
     }
 
     @discardableResult func moveNode(id nodeID: UUID, to targetID: UUID, placement: NodeMovePlacement) -> Bool {
+        let before = makeTreeUndoSnapshot()
         var root = manifest.root
         guard root.moveNode(id: nodeID, to: targetID, placement: placement) else { return false }
         manifest.root = root
         if placement == .inside { expandedNodeIDs.insert(targetID) }
         if let newParentID = root.parentID(of: nodeID) { expandedNodeIDs.insert(newParentID) }
+        recordTreeUndo(before: before)
         saveMovedTreeAsynchronously()
         return true
     }
 
     @discardableResult func indentNode(id nodeID: UUID) -> Bool {
+        indentNodes(ids: [nodeID])
+    }
+
+    @discardableResult func indentNodes(ids: [UUID]) -> Bool {
+        let before = makeTreeUndoSnapshot()
         var root = manifest.root
-        guard root.indentNode(id: nodeID) else { return false }
+        var changed = false
+        for nodeID in ids {
+            guard root.indentNode(id: nodeID) else { continue }
+            changed = true
+            if let parentID = root.parentID(of: nodeID) { expandedNodeIDs.insert(parentID) }
+        }
+        guard changed else { return false }
         manifest.root = root
-        if let parentID = root.parentID(of: nodeID) { expandedNodeIDs.insert(parentID) }
+        recordTreeUndo(before: before)
         save()
         return true
     }
 
     @discardableResult func outdentNode(id nodeID: UUID) -> Bool {
+        outdentNodes(ids: [nodeID])
+    }
+
+    @discardableResult func outdentNodes(ids: [UUID]) -> Bool {
+        let before = makeTreeUndoSnapshot()
         var root = manifest.root
-        guard root.outdentNode(id: nodeID) else { return false }
+        var changed = false
+        for nodeID in ids {
+            guard root.outdentNode(id: nodeID) else { continue }
+            changed = true
+            if let parentID = root.parentID(of: nodeID) { expandedNodeIDs.insert(parentID) }
+        }
+        guard changed else { return false }
         manifest.root = root
-        if let parentID = root.parentID(of: nodeID) { expandedNodeIDs.insert(parentID) }
+        recordTreeUndo(before: before)
         save()
         return true
     }
@@ -240,11 +319,14 @@ final class ProjectStore: ObservableObject {
     func rename(_ node: ProjectNode, to rawTitle: String) {
         let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return }
+        let pendingBefore = pendingNodeCreationSnapshots.removeValue(forKey: node.id)
+        let before = pendingBefore ?? makeTreeUndoSnapshot()
         _ = manifest.root.updateNode(id: node.id) { $0.title = title }
         if node.id == manifest.root.id {
             manifest.name = title
             if let index = projects.firstIndex(where: { $0.id == selectedProjectID }) { projects[index].name = title }
         }
+        recordTreeUndo(before: before)
         save()
     }
 
@@ -363,10 +445,118 @@ final class ProjectStore: ObservableObject {
         persistenceQueue.sync {}
     }
 
+    func undoTreeChange() {
+        flushPendingPersistence()
+        guard let record = treeUndoStack.popLast() else { updateUndoAvailability(); return }
+        treeRedoStack.append(record)
+        applyTreeUndoSnapshot(record.before, reconciling: record.fileBackups)
+        updateUndoAvailability()
+    }
+
+    func redoTreeChange() {
+        flushPendingPersistence()
+        guard let record = treeRedoStack.popLast() else { updateUndoAvailability(); return }
+        treeUndoStack.append(record)
+        if treeUndoStack.count > Self.maximumTreeUndoLevels {
+            discardUndoRecord(treeUndoStack.removeFirst())
+        }
+        applyTreeUndoSnapshot(record.after, reconciling: record.fileBackups)
+        updateUndoAvailability()
+    }
+
+    private func makeTreeUndoSnapshot() -> ProjectTreeUndoSnapshot {
+        var snapshot = manifest
+        snapshot.selectedNodeID = selectedNodeID
+        return ProjectTreeUndoSnapshot(
+            manifest: snapshot,
+            projects: projects,
+            selectedProjectID: selectedProjectID,
+            selectedNodeID: selectedNodeID,
+            expandedNodeIDs: expandedNodeIDs
+        )
+    }
+
+    private func recordTreeUndo(
+        before: ProjectTreeUndoSnapshot,
+        fileBackups: [UndoFileBackup] = []
+    ) {
+        let after = makeTreeUndoSnapshot()
+        guard before != after else {
+            fileBackups.forEach { purgeUndoBackup($0.backupURL) }
+            return
+        }
+        treeRedoStack.forEach(discardUndoRecord)
+        treeRedoStack.removeAll()
+        treeUndoStack.append(ProjectTreeUndoRecord(before: before, after: after, fileBackups: fileBackups))
+        if treeUndoStack.count > Self.maximumTreeUndoLevels {
+            discardUndoRecord(treeUndoStack.removeFirst())
+        }
+        updateUndoAvailability()
+    }
+
+    private func applyTreeUndoSnapshot(_ snapshot: ProjectTreeUndoSnapshot, reconciling backups: [UndoFileBackup]) {
+        manifest = snapshot.manifest
+        projects = snapshot.projects
+        selectedProjectID = snapshot.selectedProjectID
+        selectedNodeID = snapshot.selectedNodeID
+        expandedNodeIDs = snapshot.expandedNodeIDs
+        pendingNodeCreationSnapshots.removeAll()
+        saveMovedTreeAsynchronously(reconcilingUndoFiles: backups)
+    }
+
+    private func updateUndoAvailability() {
+        canUndoTreeChange = !treeUndoStack.isEmpty
+        canRedoTreeChange = !treeRedoStack.isEmpty
+    }
+
+    private func clearTreeUndoHistory() {
+        let records = treeUndoStack + treeRedoStack
+        treeUndoStack.removeAll()
+        treeRedoStack.removeAll()
+        pendingNodeCreationSnapshots.removeAll()
+        records.forEach(discardUndoRecord)
+        updateUndoAvailability()
+    }
+
+    private func discardUndoRecord(_ record: ProjectTreeUndoRecord) {
+        for backup in record.fileBackups { purgeUndoBackup(backup.backupURL) }
+    }
+
+    private func purgeUndoBackup(_ url: URL) {
+        let directory = url.deletingLastPathComponent()
+        persistenceQueue.async { try? FileManager.default.removeItem(at: directory) }
+    }
+
+    private func makeUndoBackups(for urls: [URL]) -> [UndoFileBackup] {
+        guard !urls.isEmpty else { return [] }
+        let actionDirectory = undoCacheDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        return urls.enumerated().map { index, source in
+            UndoFileBackup(
+                sourceURL: source.standardizedFileURL,
+                backupURL: actionDirectory.appendingPathComponent("\(index)-\(source.lastPathComponent)")
+            )
+        }
+    }
+
+    private func contentFilePaths(in root: ProjectNode) -> Set<String> {
+        var result = Set<String>()
+        func collect(_ node: ProjectNode) {
+            for item in node.content where !item.path.hasPrefix("http://") && !item.path.hasPrefix("https://") {
+                result.insert(mediaURL(for: item).standardizedFileURL.path)
+            }
+            node.children.forEach(collect)
+        }
+        collect(root)
+        return result
+    }
+
     /// Capture immutable value snapshots on the main actor, then encode and write them
     /// off the main thread. Tree mutations must not block interactive UI callbacks on
     /// serialization, disk writes, media cleanup, or WidgetKit timeline reloads.
-    private func saveMovedTreeAsynchronously(cleanupURLs: [URL] = []) {
+    private func saveMovedTreeAsynchronously(
+        deletingFiles: [UndoFileBackup] = [],
+        reconcilingUndoFiles: [UndoFileBackup] = []
+    ) {
         var manifestSnapshot = manifest
         manifestSnapshot.selectedNodeID = selectedNodeID
         let catalogSnapshot = ProjectCatalog(projects: projects, selectedProjectID: selectedProjectID)
@@ -380,10 +570,37 @@ final class ProjectStore: ObservableObject {
         let widgetNodes = Array(manifestSnapshot.root.children.prefix(3))
         let widgetTitles = widgetNodes.map(\.title)
         let widgetNodeIDs = widgetNodes.map { $0.id.uuidString }
+        let referencedContentPaths = contentFilePaths(in: manifestSnapshot.root)
 
         persistenceQueue.async {
-            for url in cleanupURLs {
-                try? FileManager.default.removeItem(at: url)
+            for backup in deletingFiles {
+                guard FileManager.default.fileExists(atPath: backup.sourceURL.path) else { continue }
+                do {
+                    try FileManager.default.createDirectory(at: backup.backupURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    if !FileManager.default.fileExists(atPath: backup.backupURL.path) {
+                        try FileManager.default.copyItem(at: backup.sourceURL, to: backup.backupURL)
+                    }
+                    if FileManager.default.fileExists(atPath: backup.backupURL.path) {
+                        try FileManager.default.removeItem(at: backup.sourceURL)
+                    }
+                } catch {
+                    NSLog("Project Knowledge Navigator: could not back up a deleted file for undo: %@", error.localizedDescription)
+                }
+            }
+            for backup in reconcilingUndoFiles {
+                let shouldExist = referencedContentPaths.contains(backup.sourceURL.standardizedFileURL.path)
+                if shouldExist {
+                    guard !FileManager.default.fileExists(atPath: backup.sourceURL.path),
+                          FileManager.default.fileExists(atPath: backup.backupURL.path) else { continue }
+                    do {
+                        try FileManager.default.createDirectory(at: backup.sourceURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+                        try FileManager.default.copyItem(at: backup.backupURL, to: backup.sourceURL)
+                    } catch {
+                        NSLog("Project Knowledge Navigator: could not restore a deleted file during undo: %@", error.localizedDescription)
+                    }
+                } else {
+                    try? FileManager.default.removeItem(at: backup.sourceURL)
+                }
             }
             do {
                 try FileManager.default.createDirectory(at: projectsDirectorySnapshot, withIntermediateDirectories: true)

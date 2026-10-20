@@ -201,6 +201,97 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertEqual(store.selectedNodeID, rootID)
     }
 
+    func testTreeUndoAndRedoRestoreNodeRename() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let original = try XCTUnwrap(store.manifest.root.children.first(where: { $0.title == "Character" }))
+
+        store.rename(original, to: "Residents")
+        XCTAssertEqual(store.manifest.root.node(id: original.id)?.title, "Residents")
+        XCTAssertTrue(store.canUndoTreeChange)
+
+        store.undoTreeChange()
+        XCTAssertEqual(store.manifest.root.node(id: original.id)?.title, "Character")
+        XCTAssertTrue(store.canRedoTreeChange)
+
+        store.redoTreeChange()
+        XCTAssertEqual(store.manifest.root.node(id: original.id)?.title, "Residents")
+        XCTAssertTrue(store.canUndoTreeChange)
+    }
+
+    func testCancellingBlankSiblingDoesNotCreateAnUndoEntry() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let previous = try XCTUnwrap(store.manifest.root.children.first)
+
+        let createdID = store.addSibling(after: previous.id)
+        XCTAssertNotNil(store.manifest.root.node(id: createdID))
+        XCTAssertFalse(store.canUndoTreeChange, "An unfinished blank node is provisional, not a committed undoable action")
+
+        XCTAssertEqual(store.deleteNodes(ids: [createdID]), 1)
+        store.flushPendingPersistence()
+        XCTAssertNil(store.manifest.root.node(id: createdID))
+        XCTAssertFalse(store.canUndoTreeChange, "Cancelling a blank node must not create a spurious undo action")
+    }
+
+    func testUndoAndRedoDeletionRestoreLocalContentFiles() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        store.addChild(to: store.manifest.root.id)
+        let nodeID = try XCTUnwrap(store.selectedNodeID)
+        store.addDocument(to: nodeID)
+        let node = try XCTUnwrap(store.manifest.root.node(id: nodeID))
+        let item = try XCTUnwrap(node.content.first)
+        let fileURL = store.mediaURL(for: item)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path))
+
+        XCTAssertEqual(store.deleteNodes(ids: [nodeID]), 1)
+        store.flushPendingPersistence()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fileURL.path))
+
+        store.undoTreeChange()
+        store.flushPendingPersistence()
+        XCTAssertNotNil(store.manifest.root.node(id: nodeID))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path), "Undo must restore the deleted node's owned files")
+
+        store.redoTreeChange()
+        store.flushPendingPersistence()
+        XCTAssertNil(store.manifest.root.node(id: nodeID))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fileURL.path), "Redo must reapply file cleanup")
+    }
+
+    func testBatchIndentIsOneUndoAction() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let originalIDs = store.manifest.root.children.map(\.id)
+        let character = try XCTUnwrap(store.manifest.root.children.first(where: { $0.title == "Character" }))
+        let interaction = try XCTUnwrap(store.manifest.root.children.first(where: { $0.title == "Interaction" }))
+
+        XCTAssertTrue(store.indentNodes(ids: [character.id, interaction.id]))
+        XCTAssertEqual(store.manifest.root.children.count, 1)
+
+        store.undoTreeChange()
+        XCTAssertEqual(store.manifest.root.children.map(\.id), originalIDs)
+    }
+
+    func testUndoHistoryIsBoundedToOneHundredOperations() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProjectStore(rootDirectory: directory)
+        let rootID = store.manifest.root.id
+
+        for _ in 0..<101 { store.addChild(to: rootID) }
+        XCTAssertEqual(store.manifest.root.children.count, 104)
+        for _ in 0..<100 { store.undoTreeChange() }
+        XCTAssertEqual(store.manifest.root.children.count, 4, "Only the latest 100 tree operations should remain undoable")
+        XCTAssertFalse(store.canUndoTreeChange)
+        XCTAssertTrue(store.canRedoTreeChange)
+    }
+
     func testDeleteNodesNeverDeletesProjectRoot() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }

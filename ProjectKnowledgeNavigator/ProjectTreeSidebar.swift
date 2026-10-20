@@ -102,12 +102,16 @@ struct ProjectTreeSidebar: View {
                     },
                     onIndent: { ids in
                         isTreeEditingActive = false
-                        ids.forEach { _ = store.indentNode(id: $0) }
+                        _ = store.indentNodes(ids: ids)
                     },
                     onOutdent: { ids in
                         isTreeEditingActive = false
-                        ids.forEach { _ = store.outdentNode(id: $0) }
+                        _ = store.outdentNodes(ids: ids)
                     },
+                    canUndo: store.canUndoTreeChange,
+                    canRedo: store.canRedoTreeChange,
+                    onUndo: { isTreeEditingActive = false; store.undoTreeChange() },
+                    onRedo: { isTreeEditingActive = false; store.redoTreeChange() },
                     onRowInteraction: { _ in isTreeEditingActive = true },
                     interactiveHitTest: { item, point, size in
                         ProjectTreeRowMetrics.isInteractive(node: item.value, point: point, size: size)
