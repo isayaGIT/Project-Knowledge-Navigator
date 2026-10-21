@@ -22,7 +22,7 @@ struct ProjectDetailView: View {
     @State private var showAddLink = false
     @State private var linkTitle = ""
     @State private var linkURL = ""
-    @State private var embeddedBrowserURL: URL?
+    @State private var embeddedBrowserURLs: [UUID: URL] = [:]
 
     var body: some View {
         detailView
@@ -321,13 +321,14 @@ struct ProjectDetailView: View {
                     if let initialURL = webURL(for: item) {
                         EmbeddedBrowserView(
                             url: Binding(
-                                get: { embeddedBrowserURL ?? initialURL },
-                                set: { embeddedBrowserURL = $0 }
+                                get: { embeddedBrowserURLs[item.id] ?? initialURL },
+                                set: { embeddedBrowserURLs[item.id] = $0 }
                             ),
                             configuration: EmbeddedBrowserConfiguration(
                                 showsNavigationControls: true,
                                 showsAddressField: false
-                            )
+                            ),
+                            cacheKey: browserCacheKey(for: item, in: node)
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -383,7 +384,13 @@ struct ProjectDetailView: View {
             isEditingMarkdown = false
         }
         if item.kind == .image { imageAnnotation = item.annotation ?? "" }
-        if item.kind == .link { embeddedBrowserURL = webURL(for: item) }
+        if item.kind == .link, embeddedBrowserURLs[item.id] == nil {
+            embeddedBrowserURLs[item.id] = webURL(for: item)
+        }
+    }
+
+    private func browserCacheKey(for item: NodeContent, in node: ProjectNode) -> String {
+        "\(store.selectedProjectID.uuidString)/\(node.id.uuidString)/\(item.id.uuidString)"
     }
 
     private func webURL(for item: NodeContent) -> URL? {
